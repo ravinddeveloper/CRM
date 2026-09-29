@@ -1,0 +1,92 @@
+{% extends "base/base.html" %}
+
+{% block title %}Curriculum Builder — {{ course.title }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <a href="{% url 'teacher:course_list' %}" class="text-xs text-brand-400 hover:underline mb-1 inline-block">← Back to Courses</a>
+        <h1 class="text-3xl font-extrabold text-white">Curriculum: {{ course.title }}</h1>
+        <p class="text-sm text-gray-400 mt-1">Organize your course into sections and upload video lectures and notes.</p>
+      </div>
+      <a href="{% url 'teacher:section_create' course_id=course.id %}"
+         class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-brand-500/20">
+        + Add Section
+      </a>
+    </div>
+
+    <!-- Curriculum List -->
+    <div class="space-y-6">
+      {% for section in sections %}
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
+        <div class="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-900/80">
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 rounded-lg bg-gray-800 text-brand-400 font-bold text-xs flex items-center justify-center border border-gray-700">
+              {{ forloop.counter }}
+            </span>
+            <h3 class="text-base font-bold text-white">{{ section.title }}</h3>
+          </div>
+          <div class="flex items-center gap-3">
+            <a href="{% url 'teacher:lecture_create' course_id=course.id section_id=section.id %}"
+               class="px-3 py-1.5 bg-brand-600/10 hover:bg-brand-600/20 text-brand-400 border border-brand-500/20 rounded-lg text-xs font-semibold">
+              + Add Lecture
+            </a>
+            <a href="{% url 'teacher:section_edit' course_id=course.id section_id=section.id %}"
+               class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold">
+              Edit
+            </a>
+          </div>
+        </div>
+
+        <!-- Lectures inside Section -->
+        <div class="divide-y divide-gray-800/60 bg-gray-950/40">
+          {% for lecture in section.lectures.all %}
+          <div class="p-4 px-6 flex items-center justify-between hover:bg-gray-900/30 transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-gray-500 font-mono">{{ forloop.counter }}.</span>
+              <span class="text-sm font-medium text-gray-200">{{ lecture.title }}</span>
+              {% if lecture.is_free_preview %}
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Preview
+              </span>
+              {% endif %}
+            </div>
+            <div class="flex items-center gap-2">
+              <a href="{% url 'teacher:lecture_video_upload' course_id=course.id lecture_id=lecture.id %}"
+                 class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-brand-400 rounded-lg text-xs font-semibold">
+                📹 Video
+              </a>
+              <a href="{% url 'teacher:lecture_note_create' course_id=course.id lecture_id=lecture.id %}"
+                 class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-semibold">
+                📄 Notes
+              </a>
+              <a href="{% url 'teacher:lecture_edit' course_id=course.id lecture_id=lecture.id %}"
+                 class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-lg text-xs">
+                Edit
+              </a>
+            </div>
+          </div>
+          {% empty %}
+          <div class="p-6 text-center text-xs text-gray-500">
+            No lectures in this section yet. Click "+ Add Lecture" to begin adding content.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-16 text-center">
+        <div class="text-5xl mb-4">📑</div>
+        <h3 class="text-xl font-bold text-white">No sections created yet</h3>
+        <p class="text-sm text-gray-400 mt-2 max-w-sm mx-auto">Courses are organized into sections and lectures. Create your first section to start uploading videos.</p>
+        <a href="{% url 'teacher:section_create' course_id=course.id %}"
+           class="mt-6 inline-block px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/20">
+          Create First Section
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

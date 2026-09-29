@@ -1,0 +1,78 @@
+{% extends "base/base.html" %}
+
+{% block title %}Manage Courses — Instructor Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-extrabold text-white">Course Management</h1>
+        <p class="text-sm text-gray-400 mt-1">Create, organize, publish, and manage all your educational content.</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="{% url 'teacher:dashboard' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-semibold text-gray-300 hover:text-white">
+          ← Overview
+        </a>
+        <a href="{% url 'teacher:course_create' %}" class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-brand-500/20">
+          + Create Course
+        </a>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-950 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-800">
+            <tr>
+              <th class="py-4 px-6">Course Title</th>
+              <th class="py-4 px-6">Category</th>
+              <th class="py-4 px-6">Status</th>
+              <th class="py-4 px-6">Price</th>
+              <th class="py-4 px-6">Sections</th>
+              <th class="py-4 px-6 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800">
+            {% for course in courses %}
+            <tr class="hover:bg-gray-800/40 transition-colors">
+              <td class="py-4 px-6 font-bold text-white">
+                <a href="{% url 'teacher:sections' course_id=course.id %}" class="hover:text-brand-400">{{ course.title }}</a>
+              </td>
+              <td class="py-4 px-6 text-gray-400 text-xs">{{ course.category.name|default:"Uncategorized" }}</td>
+              <td class="py-4 px-6">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+                             {% if course.status == 'published' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                             {% else %}bg-amber-500/10 text-amber-400 border border-amber-500/20{% endif %}">
+                  {{ course.status }}
+                </span>
+              </td>
+              <td class="py-4 px-6 font-mono text-gray-300">{{ course.currency }} {{ course.price }}</td>
+              <td class="py-4 px-6 text-gray-400">{{ course.sections.count }}</td>
+              <td class="py-4 px-6 text-right space-x-2">
+                <a href="{% url 'teacher:sections' course_id=course.id %}" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold">
+                  Curriculum
+                </a>
+                <a href="{% url 'teacher:course_edit' course_id=course.id %}" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold">
+                  Edit
+                </a>
+                <form method="post" action="{% url 'teacher:course_toggle_publish' course_id=course.id %}" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="px-3 py-1 bg-brand-600/20 hover:bg-brand-600/40 text-brand-300 rounded-lg text-xs font-semibold border border-brand-500/30">
+                    {% if course.status == 'published' %}Unpublish{% else %}Publish{% endif %}
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="py-12 text-center text-sm text-gray-500">No courses yet. Click "+ Create Course" to get started!</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

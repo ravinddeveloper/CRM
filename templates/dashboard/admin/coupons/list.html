@@ -1,0 +1,128 @@
+{% extends "base/base.html" %}
+
+{% block title %}Coupons & Discounts — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+
+  <!-- Admin Nav -->
+  {% include "dashboard/admin/_nav.html" %}
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-purple-400 font-semibold mb-1">
+          <a href="{% url 'admin_panel:dashboard' %}" class="hover:underline">Dashboard</a>
+          <span>/</span>
+          <span>Coupons</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white">Coupons & Promotional Discounts</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Manage promotional codes, percentage discounts, and usage limits.</p>
+      </div>
+
+      <a href="{% url 'admin_panel:coupon_create' %}"
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/25 transition-all transform hover:-translate-y-0.5">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>+ Create New Coupon</span>
+      </a>
+    </div>
+
+    <!-- Coupons Table -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-950/80 text-[11px] uppercase tracking-wider text-gray-400 border-b border-gray-800">
+            <tr>
+              <th class="py-4 px-6">Coupon Code</th>
+              <th class="py-4 px-6">Discount Type & Value</th>
+              <th class="py-4 px-6">Min Order</th>
+              <th class="py-4 px-6 text-center">Usage Count</th>
+              <th class="py-4 px-6">Validity Window</th>
+              <th class="py-4 px-6 text-center">Status</th>
+              <th class="py-4 px-6 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800">
+            {% for coupon in coupons %}
+            <tr class="hover:bg-gray-800/40 transition-colors">
+              <td class="py-4 px-6">
+                <span class="font-mono text-sm font-extrabold text-white px-2.5 py-1 bg-purple-600/10 border border-purple-500/30 rounded-lg">
+                  {{ coupon.code }}
+                </span>
+              </td>
+
+              <td class="py-4 px-6 text-xs text-gray-300">
+                {% if coupon.discount_type == 'percentage' %}
+                <span class="font-bold text-emerald-400 text-sm">{{ coupon.discount_value|floatformat:0 }}% OFF</span>
+                {% if coupon.max_discount_amount %}
+                <span class="block text-[11px] text-gray-500">Max: ₹{{ coupon.max_discount_amount }}</span>
+                {% endif %}
+                {% else %}
+                <span class="font-bold text-emerald-400 text-sm">₹{{ coupon.discount_value|floatformat:2 }} OFF</span>
+                {% endif %}
+              </td>
+
+              <td class="py-4 px-6 text-xs text-gray-400">
+                {% if coupon.minimum_order_amount > 0 %}
+                ₹{{ coupon.minimum_order_amount|floatformat:2 }}
+                {% else %}
+                <span class="text-gray-600">None</span>
+                {% endif %}
+              </td>
+
+              <td class="py-4 px-6 text-center text-xs text-gray-300 font-semibold">
+                {{ coupon.used_count }} / {% if coupon.max_uses %}{{ coupon.max_uses }}{% else %}∞{% endif %}
+              </td>
+
+              <td class="py-4 px-6 text-xs text-gray-400">
+                {{ coupon.valid_from|date:"M d, Y" }} – {{ coupon.valid_until|date:"M d, Y" }}
+              </td>
+
+              <td class="py-4 px-6 text-center">
+                <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
+                             {% if coupon.is_active %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                             {% else %}bg-gray-800 text-gray-500 border border-gray-700{% endif %}">
+                  {% if coupon.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+              </td>
+
+              <td class="py-4 px-6 text-right whitespace-nowrap">
+                <div class="flex items-center justify-end gap-2">
+                  <form method="post" action="{% url 'admin_panel:coupon_toggle' coupon.id %}" class="inline">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors {% if coupon.is_active %}bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20{% else %}bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20{% endif %}">
+                      {% if coupon.is_active %}Deactivate{% else %}Activate{% endif %}
+                    </button>
+                  </form>
+
+                  <form method="post" action="{% url 'admin_panel:coupon_delete' coupon.id %}" class="inline"
+                        onsubmit="return confirm('Delete coupon \'{{ coupon.code }}\'?');">
+                    {% csrf_token %}
+                    <button type="submit" class="p-1.5 text-gray-500 hover:text-red-400 rounded-lg transition-colors" title="Delete Coupon">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="7" class="py-16 text-center text-sm text-gray-500">
+                No coupons created yet. Click "+ Create New Coupon" above.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+{% endblock %}

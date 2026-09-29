@@ -1,0 +1,87 @@
+{% extends "base/base.html" %}
+
+{% block title %}Create Account — EduFlow LMS{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <a href="/" class="inline-flex items-center gap-3">
+      <div class="w-10 h-10 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/25">
+        <span class="text-white font-extrabold text-lg">E</span>
+      </div>
+      <span class="font-bold text-2xl text-white tracking-tight">EduFlow</span>
+    </a>
+    <h2 class="mt-6 text-2xl sm:text-3xl font-extrabold text-white">Start learning today</h2>
+    <p class="mt-2 text-sm text-gray-400">
+      Already have an account? <a href="{% url 'accounts:login' %}" class="font-medium text-brand-400 hover:text-brand-300">Sign in</a>
+    </p>
+  </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-gray-900 py-8 px-6 shadow-2xl shadow-black/80 rounded-2xl sm:px-10 border border-gray-800">
+
+      {% if form.non_field_errors %}
+      <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+        {% for error in form.non_field_errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" action="{% url 'accounts:register' %}" class="space-y-4">
+        {% csrf_token %}
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">First Name</label>
+            <input type="text" name="first_name" required value="{{ form.first_name.value|default:'' }}"
+                   class="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            {% if form.first_name.errors %}<p class="text-xs text-red-400 mt-1">{{ form.first_name.errors.0 }}</p>{% endif %}
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Last Name</label>
+            <input type="text" name="last_name" required value="{{ form.last_name.value|default:'' }}"
+                   class="w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            {% if form.last_name.errors %}<p class="text-xs text-red-400 mt-1">{{ form.last_name.errors.0 }}</p>{% endif %}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Email Address</label>
+          <input type="email" name="email" required value="{{ form.email.value|default:'' }}"
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          {% if form.email.errors %}<p class="text-xs text-red-400 mt-1">{{ form.email.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Password</label>
+          <input type="password" name="password1" required minlength="8"
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                 placeholder="Min 8 characters">
+          {% if form.password1.errors %}<p class="text-xs text-red-400 mt-1">{{ form.password1.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Confirm Password</label>
+          <input type="password" name="password2" required
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          {% if form.password2.errors %}<p class="text-xs text-red-400 mt-1">{{ form.password2.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="flex items-center pt-2">
+          <input id="id_agree_terms" name="agree_terms" type="checkbox" required
+                 class="h-4 w-4 rounded bg-gray-800 border-gray-700 text-brand-600 focus:ring-brand-500">
+          <label for="id_agree_terms" class="ml-2 block text-xs text-gray-400">
+            I agree to the <a href="#" class="text-brand-400 hover:underline">Terms of Service</a> and <a href="#" class="text-brand-400 hover:underline">Privacy Policy</a>
+          </label>
+        </div>
+
+        <button type="submit"
+                class="w-full mt-4 py-3 px-4 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/25 transition-all text-sm">
+          Create Account
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

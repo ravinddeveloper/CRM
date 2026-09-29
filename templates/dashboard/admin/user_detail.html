@@ -1,0 +1,145 @@
+{% extends "base/base.html" %}
+
+{% block title %}User Profile: {{ profile_user.email }} — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+
+  <!-- Admin Nav -->
+  {% include "dashboard/admin/_nav.html" %}
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Top Bar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-purple-400 font-semibold mb-1">
+          <a href="{% url 'admin_panel:dashboard' %}" class="hover:underline">Dashboard</a>
+          <span>/</span>
+          <a href="{% url 'admin_panel:user_list' %}" class="hover:underline">Users</a>
+          <span>/</span>
+          <span>{{ profile_user.email }}</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white">{{ profile_user.full_name|default:profile_user.email }}</h1>
+        <p class="text-sm text-gray-400 mt-1">{{ profile_user.email }} • Joined {{ profile_user.date_joined|date:"F d, Y" }}</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        {% if profile_user.is_suspended %}
+        <form method="post" action="{% url 'admin_panel:activate_user' user_id=profile_user.id %}">
+          {% csrf_token %}
+          <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg transition-colors">
+            Re-Activate Account
+          </button>
+        </form>
+        {% else %}
+        <form method="post" action="{% url 'admin_panel:suspend_user' user_id=profile_user.id %}" onsubmit="return confirm('Are you sure you want to suspend this user?');">
+          {% csrf_token %}
+          <button type="submit" class="px-4 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-colors">
+            Suspend User
+          </button>
+        </form>
+        {% endif %}
+
+        <a href="{% url 'admin_panel:user_list' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs font-semibold text-gray-300 hover:text-white">
+          ← Back to Users
+        </a>
+      </div>
+    </div>
+
+    <!-- User Meta & Role Switcher -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-8 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div>
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider mb-2">Account Role & Permissions</h2>
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
+                         {% if profile_user.role == 'admin' %}bg-purple-500/10 text-purple-400 border border-purple-500/20
+                         {% elif profile_user.role == 'teacher' %}bg-brand-500/10 text-brand-400 border border-brand-500/20
+                         {% else %}bg-gray-800 text-gray-300 border border-gray-700{% endif %}">
+              Current Role: {{ profile_user.role }}
+            </span>
+            <span class="text-xs text-gray-400">
+              Email Verified: {% if profile_user.email_verified %}<strong class="text-emerald-400">Yes</strong>{% else %}<span class="text-amber-400">No</span>{% endif %}
+            </span>
+          </div>
+        </div>
+
+        <!-- Role Changer Form -->
+        <form method="post" action="{% url 'admin_panel:change_user_role' profile_user.id %}" class="flex items-center gap-2">
+          {% csrf_token %}
+          <label class="text-xs text-gray-400 whitespace-nowrap">Switch Role:</label>
+          <select name="role" class="px-3 py-1.5 bg-gray-950 border border-gray-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500">
+            <option value="student" {% if profile_user.role == 'student' %}selected{% endif %}>Student</option>
+            <option value="teacher" {% if profile_user.role == 'teacher' %}selected{% endif %}>Teacher / Instructor</option>
+            <option value="admin" {% if profile_user.role == 'admin' %}selected{% endif %}>Platform Admin</option>
+          </select>
+          <button type="submit" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-colors">
+            Update Role
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Enrollments and Orders Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      
+      <!-- Enrollments -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-bold text-white">Course Enrollments ({{ enrollments.count }})</h3>
+          <a href="{% url 'admin_panel:enrollment_create' %}" class="text-xs text-brand-400 hover:underline font-semibold">+ Enroll</a>
+        </div>
+        <div class="divide-y divide-gray-800">
+          {% for enr in enrollments %}
+          <div class="py-3 flex items-center justify-between text-sm">
+            <div>
+              <p class="font-medium text-gray-200">{{ enr.course.title }}</p>
+              <p class="text-[11px] text-gray-500">Enrolled: {{ enr.created_at|date:"M d, Y" }}</p>
+            </div>
+            <form method="post" action="{% url 'admin_panel:enrollment_toggle' enr.id %}">
+              {% csrf_token %}
+              <button type="submit"
+                      class="px-2.5 py-1 text-[11px] font-bold rounded-lg uppercase tracking-wider
+                             {% if enr.status == 'active' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-red-500/10 hover:text-red-400
+                             {% else %}bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-emerald-500/10 hover:text-emerald-400{% endif %}">
+                {{ enr.status }}
+              </button>
+            </form>
+          </div>
+          {% empty %}
+          <p class="text-xs text-gray-500 py-4">No active enrollments for this user.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Orders (Clickable to Transaction Details) -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-xl">
+        <h3 class="text-base font-bold text-white mb-4">Orders & Payments ({{ orders.count }})</h3>
+        <div class="divide-y divide-gray-800">
+          {% for order in orders %}
+          <a href="{% url 'admin_panel:transaction_detail' order.id %}"
+             class="py-3 flex items-center justify-between text-sm hover:bg-gray-800/40 px-2 rounded-xl transition-colors block group">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-xs text-gray-300 group-hover:text-purple-300 font-bold">{{ order.order_number }}</span>
+                <span class="text-[10px] uppercase font-bold text-emerald-400">{{ order.status }}</span>
+              </div>
+              <span class="block text-[11px] text-gray-500 mt-0.5">{{ order.created_at|date:"M d, Y H:i" }}</span>
+            </div>
+            <div class="text-right">
+              <span class="font-bold text-emerald-400">{{ order.currency }} {{ order.total|floatformat:2 }}</span>
+              <span class="block text-[11px] text-purple-400">View Details →</span>
+            </div>
+          </a>
+          {% empty %}
+          <p class="text-xs text-gray-500 py-4">No orders placed by this user.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+{% endblock %}

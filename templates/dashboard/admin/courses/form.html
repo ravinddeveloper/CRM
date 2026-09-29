@@ -1,0 +1,198 @@
+{% extends "base/base.html" %}
+
+{% block title %}{% if is_create %}Create New Course{% else %}Edit Course: {{ course.title }}{% endif %} — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+
+  <!-- Admin Nav -->
+  {% include "dashboard/admin/_nav.html" %}
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Breadcrumb & Header -->
+    <div class="mb-8 flex items-center justify-between">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-purple-400 font-semibold mb-1">
+          <a href="{% url 'admin_panel:dashboard' %}" class="hover:underline">Dashboard</a>
+          <span>/</span>
+          <a href="{% url 'admin_panel:course_list' %}" class="hover:underline">Courses</a>
+          <span>/</span>
+          <span>{% if is_create %}Create{% else %}Edit{% endif %}</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white">
+          {% if is_create %}Create New Course{% else %}Edit Course Details{% endif %}
+        </h1>
+        <p class="text-sm text-gray-400 mt-0.5">
+          {% if is_create %}Fill in course attributes, pricing, instructor assignment, and launch status.{% else %}Update settings for '{{ course.title }}'.{% endif %}
+        </p>
+      </div>
+
+      <a href="{% url 'admin_panel:course_list' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-colors">
+        ← Back to Courses
+      </a>
+    </div>
+
+    <!-- Course Form Card -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Course Title -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+            Course Title <span class="text-purple-400">*</span>
+          </label>
+          <input type="text" name="title" required
+                 value="{{ course.title|default:'' }}"
+                 placeholder="e.g. Master Modern Django, Celery & Payment Gateways"
+                 class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+        </div>
+
+        <!-- Instructor & Category -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Assigned Instructor / Teacher <span class="text-purple-400">*</span>
+            </label>
+            <select name="teacher_id" class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+              {% for t in teachers %}
+              <option value="{{ t.id }}"
+                      {% if course and course.teacher_id == t.id %}selected
+                      {% elif not course and t.id == request.user.id %}selected{% endif %}>
+                {{ t.full_name|default:t.username|default:t.email }} ({{ t.role }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Category
+            </label>
+            <select name="category_id" class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+              <option value="">Select a Category</option>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}" {% if course and course.category_id == cat.id %}selected{% endif %}>
+                {{ cat.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Difficulty, Language & Status -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Difficulty Level
+            </label>
+            <select name="difficulty" class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+              <option value="beginner" {% if course.difficulty == 'beginner' %}selected{% endif %}>Beginner</option>
+              <option value="intermediate" {% if course.difficulty == 'intermediate' %}selected{% endif %}>Intermediate</option>
+              <option value="advanced" {% if course.difficulty == 'advanced' %}selected{% endif %}>Advanced</option>
+              <option value="expert" {% if course.difficulty == 'expert' %}selected{% endif %}>Expert</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Language
+            </label>
+            <input type="text" name="language"
+                   value="{{ course.language|default:'English' }}"
+                   class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Publication Status
+            </label>
+            <select name="status" class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+              <option value="draft" {% if course.status == 'draft' %}selected{% endif %}>Draft (Hidden)</option>
+              <option value="published" {% if course.status == 'published' %}selected{% endif %}>Published (Live)</option>
+              <option value="archived" {% if course.status == 'archived' %}selected{% endif %}>Archived</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Pricing Section -->
+        <div class="p-5 bg-gray-950/60 border border-gray-800 rounded-xl space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400">Pricing & Monetization</h3>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="is_free" {% if course.is_free %}checked{% endif %}
+                     class="rounded bg-gray-800 border-gray-700 text-purple-600 focus:ring-0">
+              <span class="text-xs font-medium text-gray-300">Mark Course as Completely Free</span>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Regular Price (INR)</label>
+              <input type="number" step="0.01" name="price"
+                     value="{{ course.price|default:'999.00' }}"
+                     class="w-full px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+            </div>
+
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Discounted Selling Price (INR) — Optional</label>
+              <input type="number" step="0.01" name="discount_price"
+                     value="{{ course.discount_price|default:'' }}"
+                     placeholder="e.g. 499.00 (leave blank if no discount)"
+                     class="w-full px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Short Description -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+            Short Summary / Tagline <span class="text-purple-400">*</span>
+          </label>
+          <textarea name="short_description" rows="2" required
+                    placeholder="Concise overview displayed on marketplace cards (max 500 chars)..."
+                    class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500">{{ course.short_description|default:'' }}</textarea>
+        </div>
+
+        <!-- Full Description -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+            Comprehensive Course Curriculum & Description <span class="text-purple-400">*</span>
+          </label>
+          <textarea name="description" rows="6" required
+                    placeholder="Provide in-depth learning outcomes, requirements, topics covered, and who this course is for..."
+                    class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500">{{ course.description|default:'' }}</textarea>
+        </div>
+
+        <!-- Thumbnail Upload -->
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+            Course Banner / Thumbnail Image
+          </label>
+          <div class="flex items-center gap-4">
+            {% if course.thumbnail %}
+            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" class="w-20 h-14 rounded-lg object-cover bg-gray-800 border border-gray-700">
+            {% endif %}
+            <input type="file" name="thumbnail" accept="image/*"
+                   class="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-gray-400 file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500">
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="pt-6 border-t border-gray-800 flex items-center justify-between">
+          <a href="{% url 'admin_panel:course_list' %}" class="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold transition-colors">
+            Cancel
+          </a>
+          
+          <button type="submit"
+                  class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-purple-500/25 transition-all transform hover:-translate-y-0.5">
+            {% if is_create %}Create Course & Continue to Curriculum →{% else %}Save Changes{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </main>
+</div>
+{% endblock %}

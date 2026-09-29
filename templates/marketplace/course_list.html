@@ -1,0 +1,321 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}Explore Expert-Led Online Courses — EduFlow LMS{% endblock %}
+{% block meta_description %}Discover top-rated online courses in development, design, business, and more. Learn from industry experts at your own pace.{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100">
+
+  <!-- ── Top Navigation ────────────────────────────────────────────────── -->
+  <nav class="sticky top-0 z-40 bg-gray-900/90 backdrop-blur-md border-b border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <a href="/" class="flex items-center gap-3 group">
+          <div class="w-9 h-9 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
+            <span class="text-white font-extrabold text-base">E</span>
+          </div>
+          <span class="font-bold text-xl text-white group-hover:text-brand-400 transition-colors tracking-tight">EduFlow</span>
+        </a>
+
+        <!-- Global Search Bar (HTMX live search) -->
+        <div class="hidden md:flex flex-1 max-w-md mx-8 relative" x-data="{ open: false }">
+          <form method="get" action="{% url 'marketplace:course_list' %}" class="w-full">
+            <div class="relative">
+              <input type="search"
+                     name="q"
+                     value="{{ q }}"
+                     placeholder="Search courses, skills, or teachers..."
+                     class="w-full pl-10 pr-4 py-2 bg-gray-800/80 border border-gray-700 rounded-xl text-sm text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                     hx-get="{% url 'marketplace:search' %}"
+                     hx-trigger="keyup changed delay:300ms, search"
+                     hx-target="#search-results-dropdown"
+                     @focus="open = true"
+                     @click.away="open = false">
+              <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+          </form>
+          <div id="search-results-dropdown"
+               x-show="open"
+               x-cloak
+               class="absolute top-full mt-2 w-full bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50"></div>
+        </div>
+
+        <!-- Auth Navigation -->
+        <div class="flex items-center gap-3">
+          {% if request.user.is_authenticated %}
+            <a href="{% url 'accounts:student_dashboard' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-200 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-xl transition-all">
+              Dashboard
+            </a>
+            <div class="relative" x-data="{ open: false }">
+              <button @click="open = !open"
+                      class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-gray-800 transition-all">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white font-semibold text-xs">
+                  {{ request.user.first_name|first|default:request.user.email|first|upper }}
+                </div>
+              </button>
+              <div x-show="open" x-cloak @click.away="open = false"
+                   class="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl py-1 z-50">
+                <div class="px-4 py-2 border-b border-gray-800">
+                  <p class="text-xs text-gray-400">Signed in as</p>
+                  <p class="text-sm font-semibold text-white truncate">{{ request.user.email }}</p>
+                </div>
+                <a href="{% url 'accounts:student_dashboard' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white">Dashboard</a>
+                <a href="{% url 'accounts:profile' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white">Profile</a>
+                <a href="{% url 'accounts:my_orders' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white">My Orders</a>
+                <div class="border-t border-gray-800 my-1"></div>
+                <form method="post" action="{% url 'accounts:logout' %}">
+                  {% csrf_token %}
+                  <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-800">Sign Out</button>
+                </form>
+              </div>
+            </div>
+          {% else %}
+            <a href="{% url 'accounts:login' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">
+              Sign In
+            </a>
+            <a href="{% url 'accounts:register' %}"
+               class="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-brand-500/25 transition-all">
+              Get Started
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero Banner ───────────────────────────────────────────────────── -->
+  <header class="relative overflow-hidden bg-gradient-to-b from-gray-900 to-gray-950 border-b border-gray-800/80 py-16 sm:py-20">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-900/20 via-transparent to-transparent pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20 mb-4">
+        ✨ Over 500+ Premium Courses Available
+      </span>
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight">
+        Master Real-World Skills with <br class="hidden sm:inline">
+        <span class="bg-clip-text text-transparent bg-gradient-to-r from-brand-400 via-indigo-400 to-purple-400">
+          Industry-Leading Experts
+        </span>
+      </h1>
+      <p class="mt-4 max-w-2xl mx-auto text-base sm:text-lg text-gray-400">
+        Advance your career with hands-on video tutorials, downloadable resources, project-based assignments, and verified certificates.
+      </p>
+
+      <!-- Category Filter Pills -->
+      {% if categories %}
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-2">
+        <a href="{% url 'marketplace:course_list' %}"
+           class="px-4 py-1.5 rounded-full text-xs font-semibold transition-all {% if not selected_category %}bg-brand-600 text-white shadow-md shadow-brand-500/30{% else %}bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700{% endif %}">
+          All Courses
+        </a>
+        {% for cat in categories %}
+        <a href="{% url 'marketplace:course_list' %}?category={{ cat.slug }}"
+           class="px-4 py-1.5 rounded-full text-xs font-semibold transition-all {% if selected_category == cat.slug %}bg-brand-600 text-white shadow-md shadow-brand-500/30{% else %}bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700{% endif %}">
+          {{ cat.name }}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- ── Main Catalog Grid ─────────────────────────────────────────────── -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="flex flex-col lg:flex-row gap-8">
+
+      <!-- Left Filters Sidebar -->
+      <aside class="w-full lg:w-64 flex-shrink-0">
+        <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 sticky top-24">
+          <div class="flex items-center justify-between pb-4 border-b border-gray-800">
+            <h2 class="text-base font-bold text-white">Filter Courses</h2>
+            {% if selected_category or selected_difficulty or q %}
+            <a href="{% url 'marketplace:course_list' %}" class="text-xs text-brand-400 hover:underline">Reset</a>
+            {% endif %}
+          </div>
+
+          <form method="get" action="{% url 'marketplace:course_list' %}" class="mt-6 space-y-6">
+            {% if q %}
+            <input type="hidden" name="q" value="{{ q }}">
+            {% endif %}
+
+            <!-- Category Filter -->
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
+              <select name="category" onchange="this.form.submit()"
+                      class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat.slug }}" {% if selected_category == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Difficulty Filter -->
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Difficulty</label>
+              <select name="difficulty" onchange="this.form.submit()"
+                      class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <option value="">All Levels</option>
+                <option value="beginner" {% if selected_difficulty == "beginner" %}selected{% endif %}>Beginner</option>
+                <option value="intermediate" {% if selected_difficulty == "intermediate" %}selected{% endif %}>Intermediate</option>
+                <option value="advanced" {% if selected_difficulty == "advanced" %}selected{% endif %}>Advanced</option>
+                <option value="expert" {% if selected_difficulty == "expert" %}selected{% endif %}>Expert</option>
+              </select>
+            </div>
+
+            <!-- Sort By -->
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Sort By</label>
+              <select name="sort" onchange="this.form.submit()"
+                      class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest First</option>
+                <option value="popular" {% if sort == "popular" %}selected{% endif %}>Most Popular</option>
+                <option value="price_low" {% if sort == "price_low" %}selected{% endif %}>Price: Low to High</option>
+                <option value="price_high" {% if sort == "price_high" %}selected{% endif %}>Price: High to Low</option>
+              </select>
+            </div>
+
+            <button type="submit"
+                    class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-sm font-semibold border border-gray-700 transition-all">
+              Apply Filters
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      <!-- Right Course List -->
+      <section class="flex-1">
+        <!-- Result count & Header -->
+        <div class="flex items-center justify-between mb-6">
+          <p class="text-sm text-gray-400">
+            Showing <span class="font-bold text-white">{{ courses|length }}</span> of <span class="font-bold text-white">{{ total_count|default:courses|length }}</span> courses
+            {% if q %} for "<span class="text-brand-400">{{ q }}</span>"{% endif %}
+          </p>
+        </div>
+
+        {% if courses %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {% for course in courses %}
+          <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 hover:shadow-2xl hover:shadow-brand-500/10 transition-all flex flex-col group">
+            <!-- Thumbnail -->
+            <a href="{% url 'marketplace:course_detail' slug=course.slug %}" class="block relative aspect-video bg-gray-800 overflow-hidden">
+              {% if course.thumbnail %}
+              <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}"
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+              {% else %}
+              <div class="w-full h-full bg-gradient-to-br from-gray-800 via-gray-900 to-indigo-950 flex items-center justify-center">
+                <span class="text-3xl font-extrabold text-gray-700 group-hover:text-brand-500 transition-colors">
+                  {{ course.title|first }}
+                </span>
+              </div>
+              {% endif %}
+              <!-- Badges -->
+              <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                {% if course.is_featured %}
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-gray-950 shadow">
+                  Featured
+                </span>
+                {% endif %}
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold capitalize bg-gray-900/80 backdrop-blur-md text-gray-300 border border-gray-700">
+                  {{ course.difficulty }}
+                </span>
+              </div>
+            </a>
+
+            <!-- Card Body -->
+            <div class="p-5 flex-1 flex flex-col justify-between">
+              <div>
+                {% if course.category %}
+                <span class="text-[11px] font-semibold text-brand-400 uppercase tracking-wider">
+                  {{ course.category.name }}
+                </span>
+                {% endif %}
+                <h3 class="text-base font-bold text-white mt-1 group-hover:text-brand-300 transition-colors line-clamp-2">
+                  <a href="{% url 'marketplace:course_detail' slug=course.slug %}">{{ course.title }}</a>
+                </h3>
+                <p class="text-xs text-gray-400 mt-2 line-clamp-2 leading-relaxed">
+                  {{ course.short_description }}
+                </p>
+              </div>
+
+              <!-- Meta Footer -->
+              <div class="mt-5 pt-4 border-t border-gray-800 flex items-center justify-between">
+                <!-- Teacher -->
+                <div class="flex items-center gap-2">
+                  <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold">
+                    {{ course.teacher.first_name|first|default:course.teacher.email|first|upper }}
+                  </div>
+                  <span class="text-xs text-gray-400 truncate max-w-[100px]">{{ course.teacher.full_name|default:course.teacher.email }}</span>
+                </div>
+
+                <!-- Price -->
+                <div class="text-right">
+                  {% if course.is_free %}
+                  <span class="text-base font-extrabold text-emerald-400">Free</span>
+                  {% elif course.discount_price %}
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="text-sm font-bold text-white">{{ course.currency }} {{ course.discount_price }}</span>
+                    <span class="text-xs text-gray-500 line-through">{{ course.price }}</span>
+                  </div>
+                  {% else %}
+                  <span class="text-base font-bold text-white">{{ course.currency }} {{ course.price }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="mt-12 flex items-center justify-center gap-2">
+          {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}"
+             class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-800">
+            Previous
+          </a>
+          {% endif %}
+          <span class="text-sm text-gray-400 px-4">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+          </span>
+          {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}"
+             class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-800">
+            Next
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="bg-gray-900/40 border border-gray-800 rounded-2xl p-16 text-center">
+          <div class="text-5xl mb-4">🔍</div>
+          <h3 class="text-xl font-bold text-white">No courses found</h3>
+          <p class="text-gray-400 text-sm mt-1 max-w-md mx-auto">
+            We couldn't find any courses matching your criteria. Try adjusting your filters or search keywords.
+          </p>
+          <a href="{% url 'marketplace:course_list' %}"
+             class="mt-6 inline-block px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition-all">
+            Clear all filters
+          </a>
+        </div>
+        {% endif %}
+      </section>
+    </div>
+  </main>
+
+  <!-- ── Footer ────────────────────────────────────────────────────────── -->
+  <footer class="bg-gray-900 border-t border-gray-800 mt-20 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-400">
+      <p>© 2026 EduFlow Learning Platform. All rights reserved.</p>
+    </div>
+  </footer>
+
+</div>
+{% endblock %}

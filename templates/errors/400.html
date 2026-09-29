@@ -1,0 +1,18 @@
+{% extends "base/base.html" %}
+{% block title %}400 Bad Request — EduFlow LMS{% endblock %}
+{% block body %}
+<div class="min-h-screen bg-gray-950 flex flex-col justify-center items-center px-4 text-center">
+  <div class="w-20 h-20 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-3xl flex items-center justify-center text-3xl mb-6">
+    ⚠️
+  </div>
+  <h1 class="text-3xl sm:text-4xl font-extrabold text-white">Bad Request</h1>
+  <p class="text-gray-400 mt-2 max-w-md text-sm sm:text-base">
+    The request could not be processed due to invalid syntax or parameters.
+  </p>
+  <div class="mt-8">
+    <a href="/" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition-all">
+      Return Home
+    </a>
+  </div>
+</div>
+{% endblock %}

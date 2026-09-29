@@ -1,0 +1,76 @@
+{% extends "base/base.html" %}
+
+{% block title %}Add Lecture Note — {{ lecture.title }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-10" x-data="{ uploadType: 'file' }">
+  <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-brand-400">Course Materials</span>
+          <h2 class="text-xl font-bold text-white">Upload Study Material</h2>
+        </div>
+        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-800 text-gray-400 border border-gray-700">
+          {{ lecture.title|truncatechars:24 }}
+        </span>
+      </div>
+      <p class="text-xs text-gray-400 mb-6">Attach reference PDFs, cheat sheets, code ZIP archives, or write inline lecture notes for students.</p>
+
+      <!-- Selector: File Upload vs Inline Markdown -->
+      <div class="flex gap-2 p-1 bg-gray-950 rounded-xl border border-gray-800 mb-6">
+        <button type="button" @click="uploadType = 'file'"
+                class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                :class="uploadType === 'file' ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-gray-400 hover:text-white'">
+          📁 Upload Document / File
+        </button>
+        <button type="button" @click="uploadType = 'inline'"
+                class="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+                :class="uploadType === 'inline' ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20' : 'text-gray-400 hover:text-white'">
+          📝 Write Inline Note
+        </button>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Title / Label *</label>
+          <input type="text" name="title" required
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                 placeholder="e.g. Complete Lecture Slides & Cheatsheet PDF">
+        </div>
+
+        <div x-show="uploadType === 'file'" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Category</label>
+            <select name="resource_type" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <option value="note">Lecture Note / PDF / Document</option>
+              <option value="attachment">Supplementary Resource / Code Archive (ZIP) / Slides</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">File (PDF, DOCX, ZIP, TXT, Images, up to 100MB)</label>
+            <input type="file" name="file" :required="uploadType === 'file'"
+                   class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-700 file:text-white hover:file:bg-gray-600 cursor-pointer">
+          </div>
+        </div>
+
+        <div x-show="uploadType === 'inline'" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">HTML / Markdown Note Content</label>
+            <textarea name="html_content" rows="6"
+                      class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono text-xs"
+                      placeholder="<h3>Summary</h3><p>Key takeaways from this lecture...</p>"></textarea>
+          </div>
+        </div>
+
+        <div class="pt-4 flex justify-end gap-3">
+          <a href="{% url 'teacher:lecture_edit' lecture_id=lecture.id %}" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm font-semibold transition-colors">Cancel</a>
+          <button type="submit" class="px-6 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/20">Save Study Material</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

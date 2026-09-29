@@ -1,0 +1,57 @@
+{% extends "base/base.html" %}
+
+{% block title %}Student Engagement Report — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-extrabold text-white">Student Activity Report</h1>
+        <p class="text-sm text-gray-400 mt-1">Learners, enrollment counts, and active status.</p>
+      </div>
+      <a href="{% url 'admin_panel:dashboard' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-semibold text-gray-300 hover:text-white">
+        ← Overview
+      </a>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-gray-950 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-800">
+          <tr>
+            <th class="py-4 px-6">Student</th>
+            <th class="py-4 px-6">Active Enrollments</th>
+            <th class="py-4 px-6">Joined Date</th>
+            <th class="py-4 px-6">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800">
+          {% for student in students %}
+          <tr class="hover:bg-gray-800/40">
+            <td class="py-4 px-6 font-semibold text-white">
+              <a href="{% url 'admin_panel:user_detail' user_id=student.id %}" class="hover:text-purple-400">
+                {{ student.full_name|default:student.email }}
+              </a>
+              <span class="block text-xs font-normal text-gray-400">{{ student.email }}</span>
+            </td>
+            <td class="py-4 px-6 font-bold text-brand-400">{{ student.enrollment_count }} courses</td>
+            <td class="py-4 px-6 text-gray-400 text-xs">{{ student.date_joined|date:"M d, Y" }}</td>
+            <td class="py-4 px-6">
+              {% if student.is_suspended %}
+              <span class="text-xs text-red-400 font-semibold">Suspended</span>
+              {% else %}
+              <span class="text-xs text-emerald-400 font-semibold">Active</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="py-12 text-center text-sm text-gray-500">No students registered yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EduFlow LMS{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}A world-class online learning platform.{% endblock %}">
+
+    <!-- Tailwind CSS via CDN (swap for compiled build in production) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd',
+                300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9',
+                600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e'
+              }
+            },
+            fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+          }
+        }
+      }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Custom styles -->
+    <style>
+      [x-cloak] { display: none !important; }
+      .progress-bar { transition: width 0.4s ease-in-out; }
+      .sidebar-link.active { @apply bg-brand-600 text-white; }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-gray-50 font-sans antialiased" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+    <!-- Toast notifications container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2" aria-live="polite"></div>
+
+    {% block body %}{% endblock %}
+
+    <!-- Alpine.js toast helper -->
+    <script>
+      function showToast(msg, type = 'info') {
+        const colors = {
+          success: 'bg-green-500', error: 'bg-red-500',
+          info: 'bg-blue-500', warning: 'bg-yellow-500'
+        };
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-medium
+                           flex items-center gap-2 max-w-sm transform transition-all duration-300`;
+        toast.innerHTML = `<span>${msg}</span>
+          <button onclick="this.parentElement.remove()" class="ml-auto text-white/80 hover:text-white">✕</button>`;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+      }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

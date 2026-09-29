@@ -1,0 +1,71 @@
+{% extends "base/base.html" %}
+
+{% block title %}Revenue & Orders Report — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+
+  <!-- Admin Nav -->
+  {% include "dashboard/admin/_nav.html" %}
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-purple-400 font-semibold mb-1">
+          <a href="{% url 'admin_panel:dashboard' %}" class="hover:underline">Dashboard</a>
+          <span>/</span>
+          <span>Revenue Report</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white">Revenue & Orders Report</h1>
+        <p class="text-sm text-gray-400 mt-1">
+          Total platform gross revenue: <strong class="text-emerald-400 text-base">₹{{ total_revenue|floatformat:2 }}</strong>
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="{% url 'admin_panel:transaction_list' %}" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-colors">
+          Manage All Transactions →
+        </a>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-gray-950 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-800">
+          <tr>
+            <th class="py-4 px-6">Order Number</th>
+            <th class="py-4 px-6">Customer</th>
+            <th class="py-4 px-6">Date</th>
+            <th class="py-4 px-6">Provider</th>
+            <th class="py-4 px-6 text-right">Amount</th>
+            <th class="py-4 px-6 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800">
+          {% for order in orders %}
+          <tr class="hover:bg-gray-800/40 cursor-pointer" onclick="window.location='{% url 'admin_panel:transaction_detail' order.id %}';">
+            <td class="py-4 px-6 font-mono text-xs font-bold text-white hover:text-purple-300">
+              {{ order.order_number }}
+            </td>
+            <td class="py-4 px-6 text-gray-300">{{ order.user.email }}</td>
+            <td class="py-4 px-6 text-gray-400 text-xs">{{ order.created_at|date:"M d, Y H:i" }}</td>
+            <td class="py-4 px-6 text-xs uppercase text-purple-400 font-semibold">{{ order.payment_provider|default:"Direct" }}</td>
+            <td class="py-4 px-6 text-right font-bold text-emerald-400">{{ order.currency }} {{ order.total|floatformat:2 }}</td>
+            <td class="py-4 px-6 text-right" onclick="event.stopPropagation();">
+              <a href="{% url 'admin_panel:transaction_detail' order.id %}"
+                 class="px-2.5 py-1 bg-gray-800 hover:bg-purple-600 hover:text-white text-gray-300 text-xs font-semibold rounded-lg transition-colors">
+                Details →
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="py-12 text-center text-sm text-gray-500">No completed orders found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+{% endblock %}

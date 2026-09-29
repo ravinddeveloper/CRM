@@ -1,0 +1,569 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ lecture.title }} — {{ course.title }} — EduFlow LMS{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 flex flex-col" x-data="learnInterface()">
+  
+  <!-- Top Navigation Bar for Learning Interface -->
+  <header class="bg-gray-900 border-b border-gray-800 sticky top-0 z-30 px-4 sm:px-6 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      
+      <!-- Left: Back to Course & Title -->
+      <div class="flex items-center gap-3 sm:gap-4 min-w-0">
+        <a href="{% url 'marketplace:course_detail' course.slug %}" class="p-2 rounded-xl bg-gray-800 text-gray-400 hover:text-white transition-colors" title="Back to Course Details">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+          </svg>
+        </a>
+        <div class="min-w-0">
+          <h1 class="text-sm sm:text-base font-bold text-white truncate">{{ course.title }}</h1>
+          <p class="text-xs text-gray-400 truncate">{{ lecture.section.title }} • {{ lecture.title }}</p>
+        </div>
+      </div>
+
+      <!-- Right: Course Progress Widget & Mobile Curriculum Toggle -->
+      <div class="flex items-center gap-4 flex-shrink-0">
+        <!-- Progress bar -->
+        <div class="hidden sm:flex items-center gap-3">
+          <div class="text-right">
+            <span class="text-xs text-gray-400">Course Progress</span>
+            <span class="block text-xs font-bold text-brand-400" id="course-progress-label">{{ course_completion_pct }}% Completed</span>
+          </div>
+          <div class="w-28 h-2.5 bg-gray-800 rounded-full overflow-hidden">
+            <div id="course-progress-bar" class="h-full bg-gradient-to-r from-brand-500 to-emerald-500 rounded-full transition-all duration-500" style="width: {{ course_completion_pct }}%;"></div>
+          </div>
+        </div>
+
+        <!-- Curriculum Toggle for Mobile -->
+        <button @click="sidebarOpen = !sidebarOpen" class="lg:hidden p-2 rounded-xl bg-gray-800 text-gray-300 hover:text-white flex items-center gap-1.5 text-xs font-semibold">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+          Curriculum
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Body Content Grid -->
+  <div class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- Left Column: Video Player, Controls & Content Tabs (8 cols) -->
+    <main class="lg:col-span-8 space-y-6">
+      
+      <!-- Video Player Card -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl relative">
+        {% if video_url %}
+        <div class="relative aspect-video bg-black flex items-center justify-center">
+          <video id="lecture-video" class="w-full h-full object-contain" controls preload="metadata">
+            <source src="{{ video_url }}" type="{{ video.mime_type|default:'video/mp4' }}">
+            Your browser does not support HTML5 video playback.
+          </video>
+
+          <!-- Resume Prompt Banner (if previous position exists) -->
+          <div id="resume-banner" class="hidden absolute top-4 left-4 right-4 bg-gray-900/90 backdrop-blur-md border border-brand-500/30 rounded-xl p-3 flex items-center justify-between text-xs text-white z-10 shadow-lg">
+            <span>You were watching at <strong id="resume-time-str">00:00</strong>. Resume?</span>
+            <div class="flex gap-2">
+              <button id="resume-btn" type="button" class="px-3 py-1 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-bold">Resume</button>
+              <button id="dismiss-resume-btn" type="button" class="px-2 py-1 text-gray-400 hover:text-white">✕</button>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <!-- Non-video or Text-only Lecture Placeholder -->
+        <div class="p-12 text-center bg-gray-950/80">
+          <div class="w-16 h-16 mx-auto rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400 mb-4 text-2xl">
+            📄
+          </div>
+          <h2 class="text-xl font-bold text-white mb-2">{{ lecture.title }}</h2>
+          <p class="text-xs text-gray-400 max-w-md mx-auto">
+            This lecture contains reading materials, code guides, or downloadable resources. Read the content below and click "Mark as Complete" when done.
+          </p>
+        </div>
+        {% endif %}
+
+        <!-- Video Bottom Bar: Lecture title & Complete Action -->
+        <div class="p-4 sm:p-5 flex items-center justify-between gap-4 border-t border-gray-800 bg-gray-900">
+          <div>
+            <span class="text-xs text-brand-400 font-semibold uppercase tracking-wider">Lecture</span>
+            <h2 class="text-base sm:text-lg font-bold text-white">{{ lecture.title }}</h2>
+          </div>
+
+          <button id="mark-complete-btn" @click="markLectureComplete()"
+                  class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all"
+                  :class="isCompleted ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20'">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            <span x-text="isCompleted ? 'Completed ✓' : 'Mark as Complete'"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Previous & Next Navigation Buttons -->
+      <div class="flex items-center justify-between gap-4">
+        {% if prev_lecture %}
+        <a href="{% url 'learn:lecture' course.slug prev_lecture.id %}"
+           class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-900 border border-gray-800 text-sm font-semibold text-gray-300 hover:text-white hover:border-gray-700 transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+          <span class="hidden sm:inline">Previous:</span> {{ prev_lecture.title|truncatechars:25 }}
+        </a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        {% if next_lecture %}
+        <a href="{% url 'learn:lecture' course.slug next_lecture.id %}"
+           class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold transition-all shadow-md shadow-brand-500/20">
+          <span class="hidden sm:inline">Next:</span> {{ next_lecture.title|truncatechars:25 }}
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+        {% else %}
+        <a href="{% url 'accounts:student_dashboard' %}"
+           class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-all shadow-md shadow-emerald-500/20">
+          Finish Course 🎉
+        </a>
+        {% endif %}
+      </div>
+
+      <!-- Tabbed Section: Notes, Description, Resources & Student Notes -->
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 sm:p-8" x-data="{ tab: 'overview' }">
+        <!-- Tab Navigation -->
+        <div class="flex gap-4 sm:gap-6 border-b border-gray-800 pb-4 mb-6 overflow-x-auto">
+          <button @click="tab = 'overview'"
+                  class="text-sm font-bold pb-2 transition-colors relative whitespace-nowrap"
+                  :class="tab === 'overview' ? 'text-white border-b-2 border-brand-500' : 'text-gray-400 hover:text-white'">
+            Overview
+          </button>
+          <button @click="tab = 'notes'"
+                  class="text-sm font-bold pb-2 transition-colors relative whitespace-nowrap"
+                  :class="tab === 'notes' ? 'text-white border-b-2 border-brand-500' : 'text-gray-400 hover:text-white'">
+            Lecture Notes ({{ notes.count }})
+          </button>
+          <button @click="tab = 'resources'"
+                  class="text-sm font-bold pb-2 transition-colors relative whitespace-nowrap"
+                  :class="tab === 'resources' ? 'text-white border-b-2 border-brand-500' : 'text-gray-400 hover:text-white'">
+            Resources & Downloads ({{ attachments.count }})
+          </button>
+          <button @click="tab = 'my_notes'"
+                  class="text-sm font-bold pb-2 transition-colors relative whitespace-nowrap flex items-center gap-1.5"
+                  :class="tab === 'my_notes' ? 'text-white border-b-2 border-brand-500' : 'text-gray-400 hover:text-white'">
+            <span>My Notes & Uploads</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] bg-brand-500/20 text-brand-300 font-bold">{{ student_notes|length }}</span>
+          </button>
+        </div>
+
+        <!-- Tab 1: Overview -->
+        <div x-show="tab === 'overview'" class="space-y-4">
+          <h3 class="text-base font-bold text-white">About this Lecture</h3>
+          <div class="text-sm text-gray-300 leading-relaxed space-y-3">
+            {{ lecture.description|default:"No specific notes provided for this lecture."|linebreaks }}
+          </div>
+        </div>
+
+        <!-- Tab 2: Notes -->
+        <div x-show="tab === 'notes'" class="space-y-6">
+          {% for note in notes %}
+          <div class="p-5 rounded-xl bg-gray-950/60 border border-gray-800">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                <span class="text-brand-400">📝</span> {{ note.title }}
+              </h4>
+              {% if note.storage_key %}
+              <a href="{% url 'learn:download_resource' course.slug lecture.id 'note' note.id %}"
+                 class="px-3.5 py-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 rounded-lg text-xs font-bold transition-colors">
+                Download Note File
+              </a>
+              {% endif %}
+            </div>
+            {% if note.html_content %}
+            <div class="text-xs text-gray-300 prose prose-invert max-w-none">
+              {{ note.html_content|safe }}
+            </div>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="py-8 text-center text-xs text-gray-500">No lecture notes attached to this lecture.</div>
+          {% endfor %}
+        </div>
+
+        <!-- Tab 3: Resources -->
+        <div x-show="tab === 'resources'" class="space-y-3">
+          {% for att in attachments %}
+          <div class="flex items-center justify-between p-4 rounded-xl bg-gray-950/60 border border-gray-800 hover:bg-gray-800/40 transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-xl">📎</span>
+              <div>
+                <span class="text-sm font-bold text-white">{{ att.title }}</span>
+                <span class="block text-[10px] text-gray-500">{{ att.original_filename|default:"Resource File" }}</span>
+              </div>
+            </div>
+            <a href="{% url 'learn:download_resource' course.slug lecture.id 'attachment' att.id %}"
+               class="px-3.5 py-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 rounded-xl text-xs font-bold transition-colors">
+              Download File
+            </a>
+          </div>
+          {% empty %}
+          <div class="py-8 text-center text-xs text-gray-500">No downloadable files attached to this lecture.</div>
+          {% endfor %}
+        </div>
+
+        <!-- Tab 4: My Notes & Uploads -->
+        <div x-show="tab === 'my_notes'" class="space-y-6">
+          
+          <!-- Note Taking & Document Upload Form -->
+          <div class="p-5 sm:p-6 rounded-2xl bg-gray-950/70 border border-brand-500/30 shadow-xl space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span class="text-brand-400">✍️</span> Take Notes & Upload Files
+                </h4>
+                <p class="text-xs text-gray-400 mt-0.5">Save personal lecture thoughts, bookmark timestamps, and upload study documents.</p>
+              </div>
+
+              <!-- Timestamp capture button -->
+              <button type="button" @click="captureTimestamp()" id="capture-time-btn"
+                      class="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-brand-300 border border-brand-500/20 text-xs font-semibold flex items-center gap-1.5 transition-all self-start sm:self-auto">
+                <span>⏱</span>
+                <span>Tag Time:</span>
+                <span id="note-time-display" class="font-mono font-bold text-white">00:00</span>
+              </button>
+            </div>
+
+            <form method="post" action="{% url 'learn:save_note' course.slug lecture.id %}" enctype="multipart/form-data" class="space-y-3">
+              {% csrf_token %}
+              <input type="hidden" name="video_timestamp_seconds" id="note-timestamp-val" value="0">
+
+              <div>
+                <input type="text" name="title"
+                       class="w-full px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500"
+                       placeholder="Note title or topic headline (optional)...">
+              </div>
+
+              <div>
+                <textarea name="content" rows="4"
+                          class="w-full px-4 py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500"
+                          placeholder="Type your notes, code snippets, questions, or key takeaways here..."></textarea>
+              </div>
+
+              <div class="p-3 bg-gray-900/60 rounded-xl border border-gray-800">
+                <label class="block text-[11px] font-semibold text-gray-400 mb-1">
+                  Upload Personal Notes Document / Homework / Cheatsheet (Optional)
+                </label>
+                <input type="file" name="note_file"
+                       class="w-full text-xs text-gray-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:bg-gray-800 file:text-brand-300 hover:file:bg-gray-700 cursor-pointer">
+                <p class="text-[10px] text-gray-500 mt-1">Supported: PDF, Word (.docx), Markdown, ZIP, Python/Code, Images (up to 100MB).</p>
+              </div>
+
+              <div class="flex items-center justify-between pt-1">
+                <span id="tagged-time-indicator" class="text-[11px] text-brand-400 hidden font-mono font-semibold">
+                  📌 Tagged at <span id="tagged-time-text">00:00</span>
+                </span>
+                <div class="ml-auto">
+                  <button type="submit"
+                          class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-brand-500/20">
+                    Save Note
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Saved Student Notes List -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">My Saved Notes ({{ student_notes|length }})</h4>
+
+            {% for sn in student_notes %}
+            <div class="p-4 sm:p-5 rounded-2xl bg-gray-950/60 border border-gray-800 hover:border-gray-700 transition-colors space-y-3">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  {% if sn.video_timestamp_seconds > 0 %}
+                  <button type="button" @click="jumpToTime({{ sn.video_timestamp_seconds }})"
+                          class="px-2.5 py-1 rounded-lg bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 border border-brand-500/20 text-xs font-mono font-bold flex items-center gap-1 transition-colors flex-shrink-0"
+                          title="Seek video to {{ sn.formatted_timestamp }}">
+                    <span>▶</span>
+                    <span>{{ sn.formatted_timestamp }}</span>
+                  </button>
+                  {% endif %}
+                  <h5 class="text-sm font-bold text-white truncate">{{ sn.title }}</h5>
+                </div>
+
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <span class="text-[11px] text-gray-500">{{ sn.created_at|date:"M d, H:i" }}</span>
+                  <form method="post" action="{% url 'learn:delete_note' course.slug lecture.id sn.id %}" onsubmit="return confirm('Delete this note?');">
+                    {% csrf_token %}
+                    <button type="submit" class="p-1 text-gray-500 hover:text-red-400 rounded-lg transition-colors" title="Delete note">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                      </svg>
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              {% if sn.content %}
+              <div class="text-xs text-gray-300 leading-relaxed whitespace-pre-line bg-gray-900/50 p-3 rounded-xl border border-gray-800/80">
+                {{ sn.content }}
+              </div>
+              {% endif %}
+
+              {% if sn.storage_key %}
+              <div class="flex items-center justify-between p-3 rounded-xl bg-gray-900 border border-gray-800">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-base">📎</span>
+                  <div class="min-w-0">
+                    <p class="text-xs font-semibold text-white truncate">{{ sn.original_filename|default:"Uploaded File" }}</p>
+                    <p class="text-[10px] text-gray-500">Personal Document Attachment</p>
+                  </div>
+                </div>
+                <a href="{% url 'learn:download_note_file' course.slug lecture.id sn.id %}"
+                   class="px-3 py-1 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 rounded-lg text-xs font-bold transition-colors">
+                  Download File
+                </a>
+              </div>
+              {% endif %}
+            </div>
+            {% empty %}
+            <div class="py-10 text-center rounded-2xl bg-gray-950/40 border border-gray-800">
+              <span class="text-3xl block mb-2">📝</span>
+              <p class="text-sm font-semibold text-gray-300">No personal notes taken yet</p>
+              <p class="text-xs text-gray-500 mt-1">Use the form above to type your study notes or upload files as you learn.</p>
+            </div>
+            {% endfor %}
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Right Column: Course Curriculum Sidebar (4 cols) -->
+    <aside class="lg:col-span-4" :class="sidebarOpen ? 'block' : 'hidden lg:block'">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl sticky top-20">
+        
+        <div class="p-4 sm:p-5 border-b border-gray-800 flex items-center justify-between">
+          <h2 class="text-base font-bold text-white">Course Curriculum</h2>
+          <span class="text-xs text-gray-400">{{ course.lectures.count }} lectures</span>
+        </div>
+
+        <!-- Section Accordion -->
+        <div class="divide-y divide-gray-800 max-h-[calc(100vh-14rem)] overflow-y-auto">
+          {% for section in sections %}
+          <div x-data="{ open: true }" class="bg-gray-900/50">
+            <!-- Section Header -->
+            <button @click="open = !open"
+                    class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-800/50 transition-colors">
+              <div class="flex items-center gap-2">
+                <svg class="w-3.5 h-3.5 text-gray-400 transform transition-transform"
+                     :class="{ 'rotate-90': open }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <span class="text-xs font-bold text-gray-300">
+                  Section {{ forloop.counter }}: {{ section.title }}
+                </span>
+              </div>
+            </button>
+
+            <!-- Lectures in Section -->
+            <div x-show="open" class="divide-y divide-gray-800/40 bg-gray-950/40">
+              {% for sec_lecture in section.lectures.all %}
+              {% if sec_lecture.is_published %}
+              <a href="{% url 'learn:lecture' course.slug sec_lecture.id %}"
+                 class="p-3.5 pl-8 flex items-center justify-between transition-colors {% if sec_lecture.id == lecture.id %}bg-brand-600/15 border-l-4 border-brand-500 text-white{% else %}hover:bg-gray-900/60 text-gray-400 hover:text-gray-200{% endif %}">
+                <div class="flex items-center gap-3 min-w-0">
+                  <!-- Completion indicator checkmark -->
+                  {% if sec_lecture.id in completed_lecture_ids %}
+                  <span class="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-[10px] flex-shrink-0 font-bold">
+                    ✓
+                  </span>
+                  {% elif sec_lecture.id == lecture.id %}
+                  <span class="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30 flex items-center justify-center text-[10px] flex-shrink-0 font-bold">
+                    ▶
+                  </span>
+                  {% else %}
+                  <span class="w-5 h-5 rounded-full bg-gray-800 text-gray-500 flex items-center justify-center text-[10px] flex-shrink-0">
+                    ○
+                  </span>
+                  {% endif %}
+
+                  <span class="text-xs font-medium truncate">{{ sec_lecture.title }}</span>
+                </div>
+
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  {% if sec_lecture.is_free_preview %}
+                  <span class="px-1.5 py-0.5 rounded text-[9px] uppercase font-bold bg-brand-500/10 text-brand-400 border border-brand-500/30">
+                    Free
+                  </span>
+                  {% endif %}
+                </div>
+              </a>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<script>
+function learnInterface() {
+  return {
+    sidebarOpen: false,
+    isCompleted: {{ is_completed|yesno:"true,false" }},
+
+    captureTimestamp() {
+      const video = document.getElementById("lecture-video");
+      const current = video ? Math.floor(video.currentTime) : 0;
+      const input = document.getElementById("note-timestamp-val");
+      const display = document.getElementById("note-time-display");
+      const indicator = document.getElementById("tagged-time-indicator");
+      const text = document.getElementById("tagged-time-text");
+      if (input) input.value = current;
+      const mins = Math.floor(current / 60);
+      const secs = current % 60;
+      const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      if (display) display.textContent = formatted;
+      if (text) text.textContent = formatted;
+      if (indicator) indicator.classList.remove("hidden");
+    },
+
+    jumpToTime(sec) {
+      const video = document.getElementById("lecture-video");
+      if (video) {
+        video.currentTime = sec;
+        video.play();
+        window.scrollTo({ top: video.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
+      }
+    },
+
+    markLectureComplete() {
+      fetch("{% url 'learn:complete' course.slug lecture.id %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": "{{ csrf_token }}"
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          this.isCompleted = true;
+          const bar = document.getElementById("course-progress-bar");
+          const label = document.getElementById("course-progress-label");
+          if (bar) bar.style.width = data.completion_percentage + "%";
+          if (label) label.textContent = Math.round(data.completion_percentage) + "% Completed";
+        }
+      })
+      .catch(err => console.error("Error marking complete:", err));
+    }
+  };
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  const video = document.getElementById("lecture-video");
+  if (!video) return;
+
+  const resumePos = parseInt("{{ resume_position|default:0 }}", 10);
+  const lectureId = "{{ lecture.id }}";
+  let lastHeartbeatTime = 0;
+  let hasTriggeredComplete = {{ is_completed|yesno:"true,false" }};
+
+  // Resume playback prompt
+  if (resumePos > 5) {
+    const banner = document.getElementById("resume-banner");
+    const resumeBtn = document.getElementById("resume-btn");
+    const dismissBtn = document.getElementById("dismiss-resume-btn");
+    const timeStr = document.getElementById("resume-time-str");
+
+    const mins = Math.floor(resumePos / 60);
+    const secs = resumePos % 60;
+    if (timeStr) timeStr.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    if (banner) banner.classList.remove("hidden");
+
+    if (resumeBtn) {
+      resumeBtn.addEventListener("click", function () {
+        video.currentTime = resumePos;
+        video.play();
+        if (banner) banner.classList.add("hidden");
+      });
+    }
+
+    if (dismissBtn) {
+      dismissBtn.addEventListener("click", function () {
+        if (banner) banner.classList.add("hidden");
+      });
+    }
+  }
+
+  // Periodic heartbeat tracking (every 15s)
+  function sendHeartbeat(isEnded = false) {
+    const currentTime = Math.floor(video.currentTime);
+    const duration = Math.floor(video.duration || {{ video_duration|default:0 }});
+
+    if (duration <= 0) return;
+
+    fetch("/api/v1/progress/heartbeat/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token }}"
+      },
+      body: JSON.stringify({
+        lecture_id: lectureId,
+        position_seconds: currentTime,
+        watched_seconds: currentTime,
+        video_duration: duration
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.is_completed && !hasTriggeredComplete) {
+        hasTriggeredComplete = true;
+        const btn = document.getElementById("mark-complete-btn");
+        if (btn) {
+          btn.classList.remove("bg-brand-600");
+          btn.classList.add("bg-emerald-500/10", "text-emerald-400");
+          btn.innerHTML = `<span>Completed ✓</span>`;
+        }
+      }
+    })
+    .catch(() => {});
+  }
+
+  video.addEventListener("timeupdate", function () {
+    const now = Math.floor(video.currentTime);
+    const display = document.getElementById("note-time-display");
+    const indicator = document.getElementById("tagged-time-indicator");
+    if (display && (!indicator || indicator.classList.contains("hidden"))) {
+      const m = Math.floor(now / 60);
+      const s = now % 60;
+      display.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+    if (now - lastHeartbeatTime >= 15) {
+      lastHeartbeatTime = now;
+      sendHeartbeat();
+    }
+  });
+
+  video.addEventListener("pause", function () {
+    sendHeartbeat();
+  });
+
+  video.addEventListener("ended", function () {
+    sendHeartbeat(true);
+  });
+});
+</script>
+{% endblock %}

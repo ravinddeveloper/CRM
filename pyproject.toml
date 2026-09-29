@@ -1,0 +1,39 @@
+[project]
+name = "eduflow-lms"
+version = "1.0.0"
+description = "Production-Ready Django Learning Management & Paid Course Platform"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.2",
+    "pyotp>=2.10.0",
+    "qrcode>=8.2",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = [
+    ".git",
+    ".venv",
+    "migrations",
+    "crm",
+    "staticfiles",
+    "media",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+]
+ignore = [
+    "E501",   # line length (handled by formatter)
+    "F403",   # from .base import * in settings
+    "F405",   # star imports in settings
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]

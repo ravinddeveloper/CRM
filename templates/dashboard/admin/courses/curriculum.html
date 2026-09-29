@@ -1,0 +1,324 @@
+{% extends "base/base.html" %}
+
+{% block title %}Curriculum Builder: {{ course.title }} — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+
+  <!-- Admin Nav -->
+  {% include "dashboard/admin/_nav.html" %}
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Header & Breadcrumb -->
+    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-purple-400 font-semibold mb-1">
+          <a href="{% url 'admin_panel:dashboard' %}" class="hover:underline">Dashboard</a>
+          <span>/</span>
+          <a href="{% url 'admin_panel:course_list' %}" class="hover:underline">Courses</a>
+          <span>/</span>
+          <span>Curriculum</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white">{{ course.title }}</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Organize curriculum chapters, lessons, video lectures, and PDF resources.</p>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <a href="{% url 'admin_panel:course_edit' course.id %}"
+           class="px-4 py-2 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-xl text-xs font-semibold transition-colors">
+          Course Settings
+        </a>
+
+        <!-- Publish / Unpublish Toggle -->
+        <form method="post" action="{% url 'admin_panel:course_toggle_publish' course.id %}">
+          {% csrf_token %}
+          <button type="submit"
+                  class="px-4 py-2 text-xs font-bold rounded-xl transition-all shadow-md {% if course.is_published %}bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20{% else %}bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-500/20{% endif %}">
+            {% if course.is_published %}Unpublish Course{% else %}✓ Publish Course Live{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Main Layout: Sections List & Add Section -->
+    <div class="space-y-6">
+
+      <!-- Add New Section Card -->
+      <div class="bg-gray-900 border border-purple-500/30 rounded-2xl p-5 shadow-xl">
+        <h2 class="text-sm font-bold text-white flex items-center gap-2 mb-3">
+          <span class="w-6 h-6 rounded-lg bg-purple-600/20 text-purple-400 flex items-center justify-center text-xs">+</span>
+          Add New Module / Section
+        </h2>
+        <form method="post" action="{% url 'admin_panel:section_create' course.id %}" class="flex flex-col sm:flex-row gap-3">
+          {% csrf_token %}
+          <input type="text" name="title" required
+                 placeholder="e.g. Module 1: Introduction & Architecture Setup"
+                 class="flex-1 px-4 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500">
+          <input type="text" name="description"
+                 placeholder="Short summary of module topics (optional)"
+                 class="flex-1 px-4 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500">
+          <button type="submit"
+                  class="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-colors whitespace-nowrap">
+            Add Section
+          </button>
+        </form>
+      </div>
+
+      <!-- Sections & Lectures Tree -->
+      {% for section in sections %}
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl" x-data="{ openAddLecture: false }">
+        
+        <!-- Section Header Bar -->
+        <div class="p-4 sm:p-5 bg-gray-950/60 border-b border-gray-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <span class="w-7 h-7 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center text-xs font-bold text-gray-300">
+              {{ forloop.counter }}
+            </span>
+            <div>
+              <h3 class="text-sm font-bold text-white">{{ section.title }}</h3>
+              {% if section.description %}
+              <p class="text-xs text-gray-400 mt-0.5">{{ section.description }}</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- Add Lecture Toggle -->
+            <button @click="openAddLecture = !openAddLecture"
+                    class="px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 border border-brand-500/20 rounded-lg text-xs font-semibold transition-colors">
+              <span x-text="openAddLecture ? 'Cancel' : '+ Add Lecture'"></span>
+            </button>
+
+            <!-- Delete Section -->
+            <form method="post" action="{% url 'admin_panel:section_delete' section.id %}"
+                  onsubmit="return confirm('Delete section \'{{ section.title }}\' and all its lectures?');">
+              {% csrf_token %}
+              <button type="submit" class="p-1.5 text-gray-500 hover:text-red-400 rounded-lg transition-colors" title="Delete Section">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Add Lecture Form (Expandable) -->
+        <div x-show="openAddLecture" x-cloak class="p-5 bg-gray-950/90 border-b border-gray-800">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-purple-400 mb-3">Add Lesson to {{ section.title }}</h4>
+          <form method="post" action="{% url 'admin_panel:lecture_create' section.id %}" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[11px] font-semibold text-gray-400 mb-1">Lecture Title *</label>
+                <input type="text" name="title" required placeholder="e.g. Understanding Django ORM Queries"
+                       class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-gray-400 mb-1">Estimated Duration (Minutes)</label>
+                <input type="number" name="estimated_duration" value="15"
+                       class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-gray-400 mb-1">Lesson Outline / Notes Summary</label>
+              <textarea name="description" rows="2" placeholder="Topics covered in this lecture..."
+                        class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500"></textarea>
+            </div>
+
+            <!-- Uploads Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3 bg-gray-900 rounded-xl border border-gray-800">
+              <div>
+                <label class="block text-[11px] font-semibold text-brand-400 mb-1">Video File (MP4, WebM)</label>
+                <input type="file" name="video_file" accept="video/*"
+                       class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[11px] file:bg-gray-800 file:text-gray-300">
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-semibold text-purple-400 mb-1">Lecture PDF / Reference Note</label>
+                <input type="file" name="note_file" accept=".pdf,.doc,.docx,.zip"
+                       class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[11px] file:bg-gray-800 file:text-gray-300">
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" name="is_free_preview" class="rounded bg-gray-800 border-gray-700 text-purple-600 focus:ring-0">
+                <span class="text-xs text-gray-300">Allow as Free Preview Lecture (unregistered students can watch)</span>
+              </label>
+
+              <button type="submit"
+                      class="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs rounded-xl transition-colors">
+                Save & Upload Lesson
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Lectures List in this Section -->
+        <div class="divide-y divide-gray-800/80">
+          {% for lecture in section.lectures.all %}
+          <div class="hover:bg-gray-800/30 transition-colors" x-data="{ showMaterials: false, showUpload: false }">
+            <div class="p-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-gray-400">
+                  {% if lecture.video %}
+                  <svg class="w-4 h-4 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {% else %}
+                  <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {% endif %}
+                </div>
+
+                <div>
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm font-semibold text-white">{{ lecture.title }}</p>
+                    {% if lecture.is_free_preview %}
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Free Preview
+                    </span>
+                    {% endif %}
+                  </div>
+                  <div class="flex items-center gap-3 text-[11px] text-gray-500 mt-0.5">
+                    {% if lecture.video %}
+                    <span class="text-brand-400">Video Attached ({{ lecture.video.duration_seconds }}s)</span>
+                    {% else %}
+                    <span class="text-gray-500">No video</span>
+                    {% endif %}
+                    {% with note_count=lecture.notes.count att_count=lecture.attachments.count %}
+                    <button type="button" @click="showMaterials = !showMaterials" class="text-purple-400 hover:text-purple-300 font-medium">
+                      • {{ note_count|add:att_count }} Study Material(s)
+                    </button>
+                    {% endwith %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <!-- Toggle Study Material Upload -->
+                <button type="button" @click="showUpload = !showUpload; if(showUpload) showMaterials = true;"
+                        class="px-2.5 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1">
+                  <span>+ Material</span>
+                </button>
+
+                <!-- Delete Lecture -->
+                <form method="post" action="{% url 'admin_panel:lecture_delete' lecture.id %}"
+                      onsubmit="return confirm('Delete lecture \'{{ lecture.title }}\'?');">
+                  {% csrf_token %}
+                  <button type="submit" class="p-1.5 text-gray-500 hover:text-red-400 rounded-lg transition-colors" title="Delete Lecture">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Upload Material Inline Drawer -->
+            <div x-show="showUpload" x-cloak class="p-4 bg-gray-950 border-t border-purple-500/20">
+              <div class="flex items-center justify-between mb-3">
+                <h5 class="text-xs font-bold uppercase tracking-wider text-purple-400">Upload Study Material to {{ lecture.title }}</h5>
+                <button type="button" @click="showUpload = false" class="text-xs text-gray-400 hover:text-white">✕ Close</button>
+              </div>
+              <form method="post" action="{% url 'admin_panel:study_material_upload' lecture.id %}" enctype="multipart/form-data" class="space-y-3">
+                {% csrf_token %}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-semibold text-gray-400 mb-1">Title / Label *</label>
+                    <input type="text" name="title" required placeholder="e.g. Course Cheatsheet & Source Code (PDF / ZIP)"
+                           class="w-full px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-semibold text-gray-400 mb-1">Resource Category</label>
+                    <select name="material_type" class="w-full px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500">
+                      <option value="note">Lecture Note / PDF / Guide</option>
+                      <option value="attachment">Supplementary Resource / Code (ZIP)</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-semibold text-gray-400 mb-1">Upload File (PDF, DOCX, ZIP, PPT, Images)</label>
+                  <input type="file" name="file" required
+                         class="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[11px] file:bg-gray-800 file:text-gray-300">
+                </div>
+                <div class="flex justify-end pt-1">
+                  <button type="submit" class="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-colors">
+                    Upload Study Material
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Existing Materials Drawer -->
+            <div x-show="showMaterials" x-cloak class="p-4 bg-gray-950/80 border-t border-gray-800/80 space-y-2">
+              <h5 class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Attached Study Materials</h5>
+              
+              <!-- Lecture Notes -->
+              {% for note in lecture.notes.all %}
+              <div class="flex items-center justify-between p-2.5 bg-gray-900 rounded-xl border border-gray-800 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="text-purple-400">📝</span>
+                  <span class="font-semibold text-white">{{ note.title }}</span>
+                  <span class="text-gray-500 text-[10px]">({{ note.original_filename|default:"Document" }})</span>
+                </div>
+                <form method="post" action="{% url 'admin_panel:study_material_delete' 'note' note.id %}" onsubmit="return confirm('Delete this study material?');">
+                  {% csrf_token %}
+                  <button type="submit" class="text-gray-500 hover:text-red-400 p-1" title="Delete">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+              {% endfor %}
+
+              <!-- Attachments -->
+              {% for att in lecture.attachments.all %}
+              <div class="flex items-center justify-between p-2.5 bg-gray-900 rounded-xl border border-gray-800 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="text-brand-400">📎</span>
+                  <span class="font-semibold text-white">{{ att.title }}</span>
+                  <span class="text-gray-500 text-[10px]">({{ att.original_filename|default:"Attachment" }})</span>
+                </div>
+                <form method="post" action="{% url 'admin_panel:study_material_delete' 'attachment' att.id %}" onsubmit="return confirm('Delete this attachment?');">
+                  {% csrf_token %}
+                  <button type="submit" class="text-gray-500 hover:text-red-400 p-1" title="Delete">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+              {% endfor %}
+
+              {% if not lecture.notes.exists and not lecture.attachments.exists %}
+              <p class="text-xs text-gray-500 italic py-1">No materials attached yet. Click "+ Material" above to upload.</p>
+              {% endif %}
+            </div>
+
+          </div>
+          {% empty %}
+          <div class="p-6 text-center text-xs text-gray-500">
+            No lectures in this module yet. Click "+ Add Lecture" above to upload content.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center text-gray-500">
+        <p class="text-sm font-semibold text-gray-300 mb-1">No curriculum modules added yet.</p>
+        <p class="text-xs text-gray-500">Use the form above to add your first course module (e.g. Introduction & Fundamentals).</p>
+      </div>
+      {% endfor %}
+
+    </div>
+
+  </main>
+</div>
+{% endblock %}

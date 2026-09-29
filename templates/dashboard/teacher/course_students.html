@@ -1,0 +1,62 @@
+{% extends "base/base.html" %}
+
+{% block title %}Enrolled Students — {{ course.title }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <a href="{% url 'teacher:course_list' %}" class="text-xs text-brand-400 hover:underline mb-1 inline-block">← Courses</a>
+        <h1 class="text-3xl font-extrabold text-white">Enrolled Students: {{ course.title }}</h1>
+        <p class="text-sm text-gray-400 mt-1">Review active learners and individual progress.</p>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-gray-950 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-800">
+          <tr>
+            <th class="py-4 px-6">Student</th>
+            <th class="py-4 px-6">Status</th>
+            <th class="py-4 px-6">Enrolled Date</th>
+            <th class="py-4 px-6">Progress</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800">
+          {% for enr in enrollments %}
+          <tr class="hover:bg-gray-800/40">
+            <td class="py-4 px-6 font-semibold text-white">
+              {{ enr.user.full_name|default:enr.user.email }}
+              <span class="block text-xs font-normal text-gray-400">{{ enr.user.email }}</span>
+            </td>
+            <td class="py-4 px-6">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                {{ enr.status }}
+              </span>
+            </td>
+            <td class="py-4 px-6 text-gray-400">{{ enr.created_at|date:"M d, Y" }}</td>
+            <td class="py-4 px-6">
+              {% if enr.progress %}
+              <div class="flex items-center gap-3">
+                <div class="w-24 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                  <div class="h-full bg-brand-500" style="width: {{ enr.progress.completion_percentage }}%"></div>
+                </div>
+                <span class="text-xs text-gray-300 font-bold">{{ enr.progress.completion_percentage|floatformat:0 }}%</span>
+              </div>
+              {% else %}
+              <span class="text-xs text-gray-500">Not started</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" class="py-12 text-center text-sm text-gray-500">No students enrolled yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

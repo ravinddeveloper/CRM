@@ -1,0 +1,6 @@
+-r base.txt
+django-debug-toolbar>=4.3
+ipython>=8.0
+factory-boy>=3.3
+Faker>=25.0
+ruff>=0.4

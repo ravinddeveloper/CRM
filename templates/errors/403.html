@@ -1,0 +1,21 @@
+{% extends "base/base.html" %}
+{% block title %}403 Access Denied — EduFlow LMS{% endblock %}
+{% block body %}
+<div class="min-h-screen bg-gray-950 flex flex-col justify-center items-center px-4 text-center">
+  <div class="w-20 h-20 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-3xl flex items-center justify-center text-3xl mb-6 shadow-xl shadow-amber-500/10">
+    🔒
+  </div>
+  <h1 class="text-3xl sm:text-4xl font-extrabold text-white">Access Denied</h1>
+  <p class="text-gray-400 mt-2 max-w-md text-sm sm:text-base">
+    You do not have permission to access this resource or paid course content.
+  </p>
+  <div class="mt-8 flex gap-4">
+    <a href="{% url 'marketplace:course_list' %}" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/20">
+      Browse Courses
+    </a>
+    <a href="{% url 'accounts:student_dashboard' %}" class="px-5 py-2.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-xl text-sm transition-all">
+      My Dashboard
+    </a>
+  </div>
+</div>
+{% endblock %}

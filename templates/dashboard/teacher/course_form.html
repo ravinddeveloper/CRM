@@ -1,0 +1,104 @@
+{% extends "base/base.html" %}
+
+{% block title %}{% if is_create %}Create Course{% else %}Edit Course{% endif %} — Instructor Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-extrabold text-white">{% if is_create %}Create New Course{% else %}Edit Course Details{% endif %}</h1>
+        <p class="text-sm text-gray-400 mt-1">Configure pricing, details, objectives, and cover image.</p>
+      </div>
+      <a href="{% url 'teacher:course_list' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-semibold text-gray-300 hover:text-white">
+        ← Cancel
+      </a>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+      <form method="post" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+
+        {% if form.errors %}
+        <div class="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+          Please correct the errors indicated below.
+        </div>
+        {% endif %}
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Course Title</label>
+          <input type="text" name="title" required value="{{ form.title.value|default:'' }}"
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                 placeholder="e.g. Master Django REST Framework from Scratch">
+          {% if form.title.errors %}<p class="text-xs text-red-400 mt-1">{{ form.title.errors.0 }}</p>{% endif %}
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Category</label>
+            <select name="category" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <option value="">Select Category</option>
+              {% for cat in categories %}
+              <option value="{{ cat.id }}" {% if form.category.value|stringformat:"s" == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Difficulty</label>
+            <select name="difficulty" class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="expert">Expert</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Price (INR)</label>
+            <input type="number" step="0.01" name="price" required value="{{ form.price.value|default:'999.00' }}"
+                   class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Discount Price (Optional)</label>
+            <input type="number" step="0.01" name="discount_price" value="{{ form.discount_price.value|default:'' }}"
+                   class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                   placeholder="e.g. 499.00">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Short Summary (500 chars max)</label>
+          <textarea name="short_description" rows="2" required
+                    class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                    placeholder="Brief description for marketplace course cards...">{{ form.short_description.value|default:'' }}</textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Full Description</label>
+          <textarea name="description" rows="6" required
+                    class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                    placeholder="Comprehensive description of topics covered, course outline...">{{ form.description.value|default:'' }}</textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Course Thumbnail</label>
+          <input type="file" name="thumbnail" accept="image/*"
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm">
+        </div>
+
+        <div class="pt-4 flex justify-end gap-3">
+          <a href="{% url 'teacher:course_list' %}" class="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold rounded-xl text-sm">
+            Cancel
+          </a>
+          <button type="submit"
+                  class="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 text-sm transition-all">
+            {% if is_create %}Create & Continue to Curriculum{% else %}Save Changes{% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

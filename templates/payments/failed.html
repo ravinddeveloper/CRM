@@ -1,0 +1,55 @@
+{% extends "base/base.html" %}
+
+{% block title %}Payment Failed — EduFlow LMS{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full bg-gray-900 border border-gray-800 rounded-3xl p-8 sm:p-10 shadow-2xl text-center">
+    
+    <!-- Failure Icon -->
+    <div class="w-20 h-20 mx-auto rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-6 shadow-lg shadow-red-500/10">
+      <svg class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </div>
+
+    <h1 class="text-2xl sm:text-3xl font-extrabold text-white">Payment Unsuccessful</h1>
+    <p class="text-sm text-gray-400 mt-2">
+      We were unable to complete your transaction or verify the payment gateway signature. Your account has not been charged, or if debited, will be auto-refunded within 3-5 business days.
+    </p>
+
+    {% if order %}
+    <div class="mt-6 p-4 rounded-2xl bg-gray-950/60 border border-gray-800/80 text-left space-y-2 text-xs">
+      <div class="flex justify-between text-gray-400">
+        <span>Order Reference:</span>
+        <span class="font-mono font-bold text-white">{{ order.order_number }}</span>
+      </div>
+      <div class="flex justify-between text-gray-400">
+        <span>Amount:</span>
+        <span class="font-bold text-white">{{ order.currency }} {{ order.total }}</span>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-8 space-y-3">
+      {% if order and order.items.first %}
+      <a href="{% url 'marketplace:course_detail' order.items.first.course_slug %}"
+         class="block w-full py-4 px-6 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/25 transition-all text-center">
+        Retry Checkout →
+      </a>
+      {% else %}
+      <a href="{% url 'marketplace:course_list' %}"
+         class="block w-full py-4 px-6 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/25 transition-all text-center">
+        Browse Courses →
+      </a>
+      {% endif %}
+
+      <a href="mailto:support@eduflow.local"
+         class="block w-full py-3 px-6 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold rounded-xl text-xs transition-colors">
+        Contact Billing Support
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

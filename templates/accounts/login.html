@@ -1,0 +1,79 @@
+{% extends "base/base.html" %}
+
+{% block title %}Sign In — EduFlow LMS{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+  <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <a href="/" class="inline-flex items-center gap-3">
+      <div class="w-10 h-10 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/25">
+        <span class="text-white font-extrabold text-lg">E</span>
+      </div>
+      <span class="font-bold text-2xl text-white tracking-tight">EduFlow</span>
+    </a>
+    <h2 class="mt-6 text-2xl sm:text-3xl font-extrabold text-white">Sign in to your account</h2>
+    <p class="mt-2 text-sm text-gray-400">
+      Or <a href="{% url 'accounts:register' %}" class="font-medium text-brand-400 hover:text-brand-300">create a new account for free</a>
+    </p>
+  </div>
+
+  <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="bg-gray-900 py-8 px-6 shadow-2xl shadow-black/80 rounded-2xl sm:px-10 border border-gray-800">
+
+      {% if form.non_field_errors %}
+      <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+        {% for error in form.non_field_errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" action="{% url 'accounts:login' %}{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}" class="space-y-5">
+        {% csrf_token %}
+
+        <div>
+          <label for="id_email" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
+            Email Address
+          </label>
+          <input type="email" name="email" id="id_email" required autofocus
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all"
+                 placeholder="you@example.com">
+          {% if form.email.errors %}
+          <p class="text-xs text-red-400 mt-1">{{ form.email.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="id_password" class="block text-xs font-semibold uppercase tracking-wider text-gray-400">
+              Password
+            </label>
+            <a href="{% url 'accounts:forgot_password' %}" class="text-xs text-brand-400 hover:text-brand-300 font-medium">
+              Forgot password?
+            </a>
+          </div>
+          <input type="password" name="password" id="id_password" required
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all"
+                 placeholder="••••••••">
+          {% if form.password.errors %}
+          <p class="text-xs text-red-400 mt-1">{{ form.password.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div class="flex items-center">
+          <input id="id_remember_me" name="remember_me" type="checkbox"
+                 class="h-4 w-4 rounded bg-gray-800 border-gray-700 text-brand-600 focus:ring-brand-500">
+          <label for="id_remember_me" class="ml-2 block text-xs text-gray-400">
+            Remember me on this device
+          </label>
+        </div>
+
+        <button type="submit"
+                class="w-full py-3 px-4 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/25 transition-all text-sm">
+          Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

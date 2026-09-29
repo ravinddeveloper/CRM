@@ -1,0 +1,141 @@
+{% extends "base/base.html" %}
+
+{% block title %}Lecture Form — Instructor Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+
+    <!-- Back Navigation -->
+    <div>
+      <a href="{% url 'teacher:sections' course_id=course.id %}" class="inline-flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300 font-semibold mb-2">
+        ← Back to Course Modules
+      </a>
+      <h1 class="text-2xl font-bold text-white">{% if lecture %}Edit Lesson: {{ lecture.title }}{% else %}New Lesson{% endif %}</h1>
+      <p class="text-xs text-gray-400">{{ course.title }}</p>
+    </div>
+
+    <!-- Main Lecture Form Card -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-4">Lesson Details</h2>
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Lecture Title *</label>
+          <input type="text" name="title" required value="{{ form.title.value|default:'' }}"
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                 placeholder="e.g. Setting Up the Database Architecture">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Estimated Duration (Seconds)</label>
+          <input type="number" name="duration_seconds" value="{{ form.duration_seconds.value|default:'300' }}"
+                 class="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+        <div class="flex items-center gap-2 pt-2">
+          <input type="checkbox" id="id_is_free_preview" name="is_free_preview" {% if form.is_free_preview.value %}checked{% endif %}
+                 class="h-4 w-4 rounded bg-gray-800 border-gray-700 text-brand-600 focus:ring-brand-500">
+          <label for="id_is_free_preview" class="text-xs text-gray-300">Allow free preview for unenrolled visitors</label>
+        </div>
+        <div class="pt-4 flex justify-end gap-3">
+          <a href="{% url 'teacher:sections' course_id=course.id %}" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm font-semibold transition-colors">Cancel</a>
+          <button type="submit" class="px-6 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/20">Save Details</button>
+        </div>
+      </form>
+    </div>
+
+    {% if lecture %}
+    <!-- Video Content Card -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Video Lecture</h3>
+          <p class="text-xs text-gray-500">Attach or update the video file for this lesson.</p>
+        </div>
+        <a href="{% url 'teacher:video_upload' lecture_id=lecture.id %}"
+           class="px-3.5 py-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 rounded-xl text-xs font-bold transition-colors">
+          {% if lecture.video %}Replace Video{% else %}+ Upload Video{% endif %}
+        </a>
+      </div>
+
+      {% if lecture.video %}
+      <div class="flex items-center gap-3 p-3 bg-gray-950 rounded-xl border border-gray-800">
+        <span class="text-lg">🎬</span>
+        <div class="min-w-0 flex-1">
+          <p class="text-xs font-bold text-white truncate">{{ lecture.video.original_filename|default:"Uploaded Video" }}</p>
+          <p class="text-[11px] text-gray-500">{{ lecture.video.duration_seconds }}s duration</p>
+        </div>
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          Ready
+        </span>
+      </div>
+      {% else %}
+      <p class="text-xs text-gray-500 italic">No video attached yet.</p>
+      {% endif %}
+    </div>
+
+    <!-- Study Materials & Attachments Card -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Study Materials & Notes</h3>
+          <p class="text-xs text-gray-500">PDFs, cheat sheets, code archives (ZIP), and guides for students.</p>
+        </div>
+        <a href="{% url 'teacher:note_upload' lecture_id=lecture.id %}"
+           class="px-3.5 py-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 rounded-xl text-xs font-bold transition-colors">
+          + Upload Material
+        </a>
+      </div>
+
+      <div class="space-y-3">
+        <!-- Notes -->
+        {% for note in lecture.notes.all %}
+        <div class="flex items-center justify-between p-3 bg-gray-950 rounded-xl border border-gray-800">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="text-base text-brand-400">📝</span>
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-white truncate">{{ note.title }}</p>
+              <p class="text-[11px] text-gray-500">Note Document ({{ note.original_filename|default:"Inline" }})</p>
+            </div>
+          </div>
+          <form method="post" action="{% url 'teacher:material_delete' 'note' note.id %}" onsubmit="return confirm('Delete this note?');">
+            {% csrf_token %}
+            <button type="submit" class="p-1.5 text-gray-500 hover:text-red-400 transition-colors" title="Delete note">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+
+        <!-- Attachments -->
+        {% for att in lecture.attachments.all %}
+        <div class="flex items-center justify-between p-3 bg-gray-950 rounded-xl border border-gray-800">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="text-base text-purple-400">📎</span>
+            <div class="min-w-0">
+              <p class="text-xs font-bold text-white truncate">{{ att.title }}</p>
+              <p class="text-[11px] text-gray-500">Attachment ({{ att.original_filename|default:"File" }})</p>
+            </div>
+          </div>
+          <form method="post" action="{% url 'teacher:material_delete' 'attachment' att.id %}" onsubmit="return confirm('Delete this attachment?');">
+            {% csrf_token %}
+            <button type="submit" class="p-1.5 text-gray-500 hover:text-red-400 transition-colors" title="Delete attachment">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+
+        {% if not lecture.notes.exists and not lecture.attachments.exists %}
+        <p class="text-xs text-gray-500 italic py-2">No study materials attached to this lesson yet.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

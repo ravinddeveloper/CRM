@@ -1,0 +1,114 @@
+{% extends "base/base.html" %}
+
+{% block title %}Create Coupon — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+
+  <!-- Admin Nav -->
+  {% include "dashboard/admin/_nav.html" %}
+
+  <main class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="mb-8 flex items-center justify-between">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-purple-400 font-semibold mb-1">
+          <a href="{% url 'admin_panel:dashboard' %}" class="hover:underline">Dashboard</a>
+          <span>/</span>
+          <a href="{% url 'admin_panel:coupon_list' %}" class="hover:underline">Coupons</a>
+          <span>/</span>
+          <span>Create</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white">Create Promotional Coupon</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Define promo codes, discount models, and usage constraints.</p>
+      </div>
+
+      <a href="{% url 'admin_panel:coupon_list' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-colors">
+        ← Back
+      </a>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <form method="post" class="space-y-6">
+        {% csrf_token %}
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+            Coupon Code <span class="text-purple-400">*</span>
+          </label>
+          <input type="text" name="code" required
+                 placeholder="e.g. FLASH50, WELCOME20, FESTIVAL"
+                 class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm font-mono font-bold text-white uppercase placeholder-gray-500 focus:outline-none focus:border-purple-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Discount Type
+            </label>
+            <select name="discount_type" class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+              <option value="percentage">Percentage (%) Discount</option>
+              <option value="fixed">Fixed Amount (₹) Off</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Discount Value <span class="text-purple-400">*</span>
+            </label>
+            <input type="number" step="0.01" name="discount_value" required value="20.00"
+                   class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Max Discount Amount (₹) — Cap for %
+            </label>
+            <input type="number" step="0.01" name="max_discount_amount" placeholder="e.g. 1000 (optional)"
+                   class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Minimum Order Subtotal (₹)
+            </label>
+            <input type="number" step="0.01" name="minimum_order_amount" value="0.00"
+                   class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Total Max Uses (Global Limit)
+            </label>
+            <input type="number" name="max_uses" placeholder="Leave empty for unlimited"
+                   class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+              Validity Window (Days Active)
+            </label>
+            <input type="number" name="valid_days" value="30"
+                   class="w-full px-4 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500">
+          </div>
+        </div>
+
+        <div class="pt-6 border-t border-gray-800 flex items-center justify-between">
+          <a href="{% url 'admin_panel:coupon_list' %}" class="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold transition-colors">
+            Cancel
+          </a>
+          <button type="submit"
+                  class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-purple-500/25 transition-all">
+            Save & Publish Coupon
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,276 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}{{ course.title }} — EduFlow LMS{% endblock %}
+{% block meta_description %}{{ course.short_description }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100">
+
+  <!-- ── Top Navigation ────────────────────────────────────────────────── -->
+  <nav class="sticky top-0 z-40 bg-gray-900/90 backdrop-blur-md border-b border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <a href="/" class="flex items-center gap-3 group">
+          <div class="w-9 h-9 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
+            <span class="text-white font-extrabold text-base">E</span>
+          </div>
+          <span class="font-bold text-xl text-white group-hover:text-brand-400 transition-colors">EduFlow</span>
+        </a>
+
+        <div class="flex items-center gap-3">
+          <a href="{% url 'marketplace:course_list' %}"
+             class="px-3 py-1.5 text-sm text-gray-300 hover:text-white transition-colors">
+            ← Back to Courses
+          </a>
+          {% if request.user.is_authenticated %}
+            <a href="{% url 'accounts:student_dashboard' %}"
+               class="px-4 py-2 text-sm font-semibold bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-all">
+              Dashboard
+            </a>
+          {% else %}
+            <a href="{% url 'accounts:login' %}"
+               class="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">
+              Sign In
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero Banner ───────────────────────────────────────────────────── -->
+  <div class="bg-gray-900 border-b border-gray-800 py-12 lg:py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="max-w-3xl">
+        {% if course.category %}
+        <span class="inline-block px-3 py-1 bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold rounded-full mb-4">
+          {{ course.category.name }}
+        </span>
+        {% endif %}
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+          {{ course.title }}
+        </h1>
+        <p class="mt-4 text-base sm:text-lg text-gray-300 leading-relaxed">
+          {{ course.short_description }}
+        </p>
+
+        <!-- Meta info row -->
+        <div class="mt-6 flex flex-wrap items-center gap-4 text-xs sm:text-sm text-gray-400">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-full bg-brand-600 flex items-center justify-center text-white text-[10px] font-bold">
+              {{ course.teacher.first_name|first|default:course.teacher.email|first|upper }}
+            </div>
+            <span>Created by <strong class="text-white">{{ course.teacher.full_name|default:course.teacher.email }}</strong></span>
+          </div>
+          <span>•</span>
+          <span class="capitalize">Level: <strong class="text-white">{{ course.difficulty }}</strong></span>
+          <span>•</span>
+          <span>Duration: <strong class="text-white">{{ course.estimated_duration }} mins</strong></span>
+          <span>•</span>
+          <span>Language: <strong class="text-white">{{ course.language }}</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main Content Area ─────────────────────────────────────────────── -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+
+      <!-- Left Column: Details & Curriculum (2 cols) -->
+      <div class="lg:col-span-2 space-y-12">
+
+        <!-- What you'll learn -->
+        {% if course.learning_objectives %}
+        <section class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 sm:p-8">
+          <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <span>🎯</span> What you'll learn
+          </h2>
+          <div class="grid sm:grid-cols-2 gap-4">
+            {% for item in course.learning_objectives %}
+            <div class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span class="text-sm text-gray-300 leading-snug">{{ item }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+
+        <!-- Course Curriculum -->
+        <section>
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-white">Course Curriculum</h2>
+            <span class="text-sm text-gray-400">
+              {{ sections|length }} sections • {{ course.sections.count }} lectures
+            </span>
+          </div>
+
+          <div class="space-y-4" x-data="{ activeSection: 0 }">
+            {% for section in sections %}
+            <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden transition-all">
+              <!-- Section Header -->
+              <button @click="activeSection = (activeSection === {{ forloop.counter0 }} ? -1 : {{ forloop.counter0 }})"
+                      class="w-full flex items-center justify-between p-4 sm:p-5 text-left bg-gray-900 hover:bg-gray-800/80 transition-colors">
+                <div class="flex items-center gap-3">
+                  <svg class="w-4 h-4 text-brand-400 transform transition-transform"
+                       :class="{ 'rotate-90': activeSection === {{ forloop.counter0 }} }"
+                       fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                  <span class="font-semibold text-white text-sm sm:text-base">
+                    Section {{ forloop.counter }}: {{ section.title }}
+                  </span>
+                </div>
+                <span class="text-xs text-gray-400">
+                  {{ section.lectures.count }} lectures
+                </span>
+              </button>
+
+              <!-- Section Lectures -->
+              <div x-show="activeSection === {{ forloop.counter0 }}" x-collapse class="border-t border-gray-800 bg-gray-950/50 divide-y divide-gray-800/50">
+                {% for lecture in section.lectures.all %}
+                <div class="p-3.5 sm:px-6 flex items-center justify-between hover:bg-gray-900/50 transition-colors">
+                  <div class="flex items-center gap-3">
+                    <span class="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-[10px] text-gray-400">
+                      {{ forloop.counter }}
+                    </span>
+                    <span class="text-sm text-gray-300">{{ lecture.title }}</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    {% if lecture.is_free_preview %}
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-brand-500/10 text-brand-400 border border-brand-500/30">
+                      Free Preview
+                    </span>
+                    {% endif %}
+                    <span class="text-xs text-gray-500">{{ lecture.duration_seconds|default:300|divisibleby:60 }} mins</span>
+                  </div>
+                </div>
+                {% empty %}
+                <div class="p-4 text-xs text-gray-500 text-center">No lectures added yet.</div>
+                {% endfor %}
+              </div>
+            </div>
+            {% empty %}
+            <div class="p-6 bg-gray-900 border border-gray-800 rounded-xl text-center text-sm text-gray-400">
+              Curriculum is being prepared. Check back soon!
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <!-- Requirements -->
+        {% if course.requirements %}
+        <section class="bg-gray-900/40 border border-gray-800 rounded-2xl p-6 sm:p-8">
+          <h2 class="text-xl font-bold text-white mb-4">Requirements</h2>
+          <ul class="space-y-2">
+            {% for req in course.requirements %}
+            <li class="flex items-center gap-3 text-sm text-gray-300">
+              <span class="text-gray-500">•</span>
+              <span>{{ req }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+
+        <!-- Full Description -->
+        <section class="prose prose-invert max-w-none">
+          <h2 class="text-2xl font-bold text-white mb-4">Course Description</h2>
+          <div class="text-gray-300 text-sm sm:text-base leading-relaxed whitespace-pre-line">
+            {{ course.description }}
+          </div>
+        </section>
+
+        <!-- Instructor Bio -->
+        <section class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 sm:p-8">
+          <h2 class="text-xl font-bold text-white mb-4">About the Instructor</h2>
+          <div class="flex items-start gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-lg flex-shrink-0">
+              {{ course.teacher.first_name|first|default:course.teacher.email|first|upper }}
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">{{ course.teacher.full_name|default:course.teacher.email }}</h3>
+              <p class="text-xs text-brand-400 font-medium">Instructor</p>
+              <p class="text-sm text-gray-400 mt-2 leading-relaxed">
+                {{ course.teacher.profile.bio|default:"Dedicated online educator specializing in practical, real-world skill building." }}
+              </p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Right Column: Sticky Purchase Card (1 col) -->
+      <aside class="lg:col-span-1">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 sticky top-24 shadow-2xl shadow-black/60">
+          <!-- Thumbnail preview -->
+          <div class="relative aspect-video rounded-xl overflow-hidden bg-gray-800 mb-6">
+            {% if course.thumbnail %}
+            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" class="w-full h-full object-cover">
+            {% else %}
+            <div class="w-full h-full bg-gradient-to-br from-brand-900/60 to-purple-950 flex items-center justify-center">
+              <span class="text-4xl">🎬</span>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Price -->
+          <div class="mb-6">
+            {% if is_enrolled %}
+              <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center mb-4">
+                <span class="text-sm font-semibold text-emerald-400">✓ You are enrolled in this course</span>
+              </div>
+              <a href="{% url 'accounts:student_dashboard' %}"
+                 class="block w-full text-center py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition-all">
+                Go to Learning Dashboard
+              </a>
+            {% else %}
+              <div class="flex items-baseline gap-2 mb-2">
+                {% if course.is_free %}
+                <span class="text-3xl font-extrabold text-white">Free</span>
+                {% elif course.discount_price %}
+                <span class="text-3xl font-extrabold text-white">{{ course.currency }} {{ course.discount_price }}</span>
+                <span class="text-base text-gray-500 line-through">{{ course.currency }} {{ course.price }}</span>
+                <span class="text-xs font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-md">Save {{ course.discount_percentage|default:20 }}%</span>
+                {% else %}
+                <span class="text-3xl font-extrabold text-white">{{ course.currency }} {{ course.price }}</span>
+                {% endif %}
+              </div>
+
+              <!-- Buy CTA -->
+              <a href="{% url 'orders:checkout' %}?course_id={{ course.id }}"
+                 class="w-full py-3.5 px-6 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/25 transition-all text-center block">
+                Enroll Now
+              </a>
+              <p class="text-center text-xs text-gray-500 mt-2">30-Day Money-Back Guarantee</p>
+            {% endif %}
+          </div>
+
+          <!-- What's included checklist -->
+          <div class="border-t border-gray-800 pt-6 space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">This course includes:</h4>
+            <div class="flex items-center gap-2.5 text-xs text-gray-300">
+              <span>📹</span> <span>HD on-demand video lectures</span>
+            </div>
+            <div class="flex items-center gap-2.5 text-xs text-gray-300">
+              <span>📱</span> <span>Access on mobile, tablet, and desktop</span>
+            </div>
+            <div class="flex items-center gap-2.5 text-xs text-gray-300">
+              <span>♾️</span> <span>Full lifetime access</span>
+            </div>
+            <div class="flex items-center gap-2.5 text-xs text-gray-300">
+              <span>🎓</span> <span>Certificate of completion</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </main>
+
+</div>
+{% endblock %}

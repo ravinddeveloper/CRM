@@ -1,0 +1,104 @@
+{% extends "base/base.html" %}
+
+{% block title %}Order #{{ order.order_number }} — EduFlow LMS{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-12">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    
+    <div class="mb-8 flex items-center justify-between">
+      <div>
+        <a href="{% url 'accounts:my_orders' %}" class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-2">
+          ← Back to Orders
+        </a>
+        <h1 class="text-3xl font-extrabold text-white">Order Details</h1>
+        <p class="text-xs text-gray-400 mt-1">Placed on {{ order.created_at|date:"M d, Y, h:i A" }}</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
+                     {% if order.status == 'completed' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                     {% elif order.status == 'pending' %}bg-amber-500/10 text-amber-400 border border-amber-500/20
+                     {% else %}bg-red-500/10 text-red-400 border border-red-500/20{% endif %}">
+          {{ order.get_status_display }}
+        </span>
+        {% if order.is_completed %}
+        <a href="{% url 'payments:download_invoice' order.id %}" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-bold transition-colors">
+          Download Invoice PDF
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Order Items Card -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl mb-8">
+      <div class="p-6 border-b border-gray-800">
+        <h2 class="text-base font-bold text-white">Purchased Courses</h2>
+      </div>
+
+      <div class="divide-y divide-gray-800">
+        {% for item in order.items.all %}
+        <div class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 class="text-base font-bold text-white">{{ item.course_title }}</h3>
+            <p class="text-xs text-gray-400 mt-1">Snapshot Unit Price: {{ order.currency }} {{ item.unit_price }}</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-base font-extrabold text-white">{{ order.currency }} {{ item.final_price }}</span>
+            <a href="{% url 'learn:course' item.course_slug %}" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-brand-500/20">
+              Go to Course →
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Financial Totals -->
+      <div class="p-6 bg-gray-950/60 border-t border-gray-800">
+        <div class="max-w-xs ml-auto space-y-2 text-xs">
+          <div class="flex justify-between text-gray-400">
+            <span>Subtotal:</span>
+            <span class="text-white">{{ order.currency }} {{ order.subtotal }}</span>
+          </div>
+          {% if order.discount_amount > 0 %}
+          <div class="flex justify-between text-emerald-400">
+            <span>Coupon Discount:</span>
+            <span>-{{ order.currency }} {{ order.discount_amount }}</span>
+          </div>
+          {% endif %}
+          {% if order.tax_amount > 0 %}
+          <div class="flex justify-between text-gray-400">
+            <span>Tax:</span>
+            <span class="text-white">{{ order.currency }} {{ order.tax_amount }}</span>
+          </div>
+          {% endif %}
+          <div class="pt-2 border-t border-gray-800 flex justify-between text-sm font-bold text-white">
+            <span>Total Paid:</span>
+            <span class="text-brand-400">{{ order.currency }} {{ order.total }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metadata Details -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Billing Details</h3>
+        <p class="text-sm font-semibold text-white">{{ order.billing_name|default:order.user.full_name }}</p>
+        <p class="text-xs text-gray-400 mt-1">{{ order.billing_email|default:order.user.email }}</p>
+        {% if order.billing_phone %}
+        <p class="text-xs text-gray-400 mt-1">{{ order.billing_phone }}</p>
+        {% endif %}
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Payment Info</h3>
+        <p class="text-xs text-gray-400">Provider: <span class="text-white font-medium">{{ order.payment_provider|default:"Online"|capfirst }}</span></p>
+        <p class="text-xs text-gray-400 mt-1">Transaction Ref: <span class="text-white font-mono">{{ order.payment_transaction_id|default:"N/A" }}</span></p>
+        <p class="text-xs text-gray-400 mt-1">Currency: <span class="text-white">{{ order.currency }}</span></p>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

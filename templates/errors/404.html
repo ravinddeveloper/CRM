@@ -1,0 +1,21 @@
+{% extends "base/base.html" %}
+{% block title %}404 Page Not Found — EduFlow LMS{% endblock %}
+{% block body %}
+<div class="min-h-screen bg-gray-950 flex flex-col justify-center items-center px-4 text-center">
+  <div class="w-20 h-20 bg-brand-500/10 border border-brand-500/20 text-brand-400 rounded-3xl flex items-center justify-center text-4xl mb-6 shadow-xl shadow-brand-500/10">
+    404
+  </div>
+  <h1 class="text-3xl sm:text-4xl font-extrabold text-white">Page Not Found</h1>
+  <p class="text-gray-400 mt-2 max-w-md text-sm sm:text-base">
+    The page you are looking for does not exist or may have been moved.
+  </p>
+  <div class="mt-8 flex gap-4">
+    <a href="/" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/20">
+      Back to Home
+    </a>
+    <a href="{% url 'marketplace:course_list' %}" class="px-5 py-2.5 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 rounded-xl text-sm transition-all">
+      Browse Courses
+    </a>
+  </div>
+</div>
+{% endblock %}

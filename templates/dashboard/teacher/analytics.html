@@ -1,0 +1,37 @@
+{% extends "base/base.html" %}
+
+{% block title %}Instructor Analytics — EduFlow LMS{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-extrabold text-white">Course Performance & Analytics</h1>
+        <p class="text-sm text-gray-400 mt-1">Metrics on student engagement, lecture watch times, and completion rates.</p>
+      </div>
+      <a href="{% url 'teacher:dashboard' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-semibold text-gray-300 hover:text-white">
+        ← Dashboard
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Average Completion Rate</p>
+        <p class="text-3xl font-extrabold text-brand-400 mt-2">68.4%</p>
+        <p class="text-xs text-gray-500 mt-1">+4.2% from last month</p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Total Video Watch Hours</p>
+        <p class="text-3xl font-extrabold text-purple-400 mt-2">1,240 hrs</p>
+        <p class="text-xs text-gray-500 mt-1">Across all published lectures</p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Certificates Issued</p>
+        <p class="text-3xl font-extrabold text-emerald-400 mt-2">84</p>
+        <p class="text-xs text-gray-500 mt-1">Full 100% course completions</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Invoice #{{ invoice.invoice_number }}</title>
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; margin: 40px; font-size: 13px; line-height: 1.5; }
+    .header { border-bottom: 2px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; }
+    .logo { font-size: 24px; font-weight: 800; color: #4f46e5; }
+    .meta { text-align: right; }
+    .title { font-size: 20px; font-weight: bold; margin-bottom: 20px; }
+    .details { width: 100%; margin-bottom: 30px; }
+    .details td { vertical-align: top; }
+    table.items { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+    table.items th { background: #f8fafc; border-bottom: 2px solid #cbd5e1; text-align: left; padding: 10px; font-weight: 600; font-size: 12px; }
+    table.items td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; }
+    .totals { width: 40%; margin-left: auto; margin-bottom: 40px; }
+    .totals table { width: 100%; }
+    .totals td { padding: 6px 0; }
+    .totals td:last-child { text-align: right; }
+    .total-row { font-size: 16px; font-weight: bold; border-top: 2px solid #1e293b; color: #4f46e5; }
+    .footer { font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="logo">EduFlow LMS</div>
+      <p style="color: #64748b; margin-top: 4px;">Modern Learning Platform</p>
+    </div>
+    <div class="meta">
+      <strong>INVOICE</strong><br>
+      #{{ invoice.invoice_number }}<br>
+      Date: {{ invoice.created_at|date:"F d, Y" }}
+    </div>
+  </div>
+
+  <table class="details">
+    <tr>
+      <td style="width: 50%;">
+        <strong>Billed To:</strong><br>
+        {{ order.billing_name|default:order.user.full_name|default:order.user.email }}<br>
+        {{ order.billing_email|default:order.user.email }}<br>
+        User ID: {{ order.user.id }}
+      </td>
+      <td style="width: 50%; text-align: right;">
+        <strong>Payment Reference:</strong><br>
+        Order Ref: {{ order.order_number }}<br>
+        Transaction: {{ order.payment_transaction_id|default:"Prepaid" }}<br>
+        Status: PAID
+      </td>
+    </tr>
+  </table>
+
+  <table class="items">
+    <thead>
+      <tr>
+        <th>Course Item</th>
+        <th style="text-align: right;">Unit Price</th>
+        <th style="text-align: right;">Discount</th>
+        <th style="text-align: right;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in order.items.all %}
+      <tr>
+        <td><strong>{{ item.course_title }}</strong></td>
+        <td style="text-align: right;">{{ order.currency }} {{ item.unit_price }}</td>
+        <td style="text-align: right;">{{ order.currency }} {{ item.discount_amount }}</td>
+        <td style="text-align: right;">{{ order.currency }} {{ item.final_price }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <table>
+      <tr>
+        <td>Subtotal:</td>
+        <td>{{ order.currency }} {{ order.subtotal }}</td>
+      </tr>
+      {% if order.discount_amount > 0 %}
+      <tr style="color: #059669;">
+        <td>Coupon Discount:</td>
+        <td>-{{ order.currency }} {{ order.discount_amount }}</td>
+      </tr>
+      {% endif %}
+      {% if order.tax_amount > 0 %}
+      <tr>
+        <td>Tax:</td>
+        <td>{{ order.currency }} {{ order.tax_amount }}</td>
+      </tr>
+      {% endif %}
+      <tr class="total-row">
+        <td>Total Paid:</td>
+        <td>{{ order.currency }} {{ order.total }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="footer">
+    Thank you for learning with EduFlow LMS.<br>
+    This is a computer-generated tax invoice and requires no physical signature.
+  </div>
+</body>
+</html>

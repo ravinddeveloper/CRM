@@ -1,0 +1,123 @@
+{% extends "base/base.html" %}
+
+{% block title %}User Management — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+
+  <!-- Admin Nav -->
+  {% include "dashboard/admin/_nav.html" %}
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-purple-400 font-semibold mb-1">
+          <a href="{% url 'admin_panel:dashboard' %}" class="hover:underline">Dashboard</a>
+          <span>/</span>
+          <span>Users</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white">Platform Users & Roles</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Audit accounts, manage roles, inspect enrollments, and control access permissions.</p>
+      </div>
+
+      <a href="{% url 'admin_panel:user_create' %}"
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/25 transition-all transform hover:-translate-y-0.5">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>+ Add New User</span>
+      </a>
+    </div>
+
+    <!-- Filter form -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-6 flex flex-wrap gap-4 items-center justify-between shadow-xl">
+      <form method="get" class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+        <input type="text" name="q" placeholder="Search by name or email..." value="{{ request.GET.q }}"
+               class="px-4 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500">
+        <select name="role" class="px-3 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-gray-300 focus:outline-none focus:border-purple-500">
+          <option value="">All Roles</option>
+          <option value="student" {% if request.GET.role == 'student' %}selected{% endif %}>Student</option>
+          <option value="teacher" {% if request.GET.role == 'teacher' %}selected{% endif %}>Teacher</option>
+          <option value="admin" {% if request.GET.role == 'admin' %}selected{% endif %}>Admin</option>
+        </select>
+        <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-colors">
+          Search Users
+        </button>
+      </form>
+
+      <div class="text-xs text-gray-400">
+        <span>{{ total_users }} Total Users</span> •
+        <span class="text-brand-400">{{ total_students }} Students</span> •
+        <span class="text-purple-400">{{ total_teachers }} Teachers</span>
+      </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-950/80 text-[11px] uppercase tracking-wider text-gray-400 border-b border-gray-800">
+            <tr>
+              <th class="py-4 px-6">User</th>
+              <th class="py-4 px-6">Role</th>
+              <th class="py-4 px-6">Status</th>
+              <th class="py-4 px-6">Enrolled</th>
+              <th class="py-4 px-6">Joined Date</th>
+              <th class="py-4 px-6 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800">
+            {% for u in users %}
+            <tr class="hover:bg-gray-800/40 transition-colors">
+              <td class="py-4 px-6">
+                <a href="{% url 'admin_panel:user_detail' user_id=u.id %}" class="font-bold text-white hover:text-purple-400 transition-colors text-sm">
+                  {{ u.full_name|default:u.username|default:u.email }}
+                </a>
+                <span class="block text-xs text-gray-500">{{ u.email }}</span>
+              </td>
+              <td class="py-4 px-6">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+                             {% if u.role == 'admin' %}bg-purple-500/10 text-purple-400 border border-purple-500/20
+                             {% elif u.role == 'teacher' %}bg-brand-500/10 text-brand-400 border border-brand-500/20
+                             {% else %}bg-gray-800 text-gray-300 border border-gray-700{% endif %}">
+                  {{ u.role }}
+                </span>
+              </td>
+              <td class="py-4 px-6">
+                {% if u.is_suspended %}
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-500/10 text-red-400 border border-red-500/20">Suspended</span>
+                {% elif u.is_active %}
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+                {% else %}
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-800 text-gray-400 border border-gray-700">Inactive</span>
+                {% endif %}
+              </td>
+              <td class="py-4 px-6 text-xs text-gray-400 font-semibold">
+                {{ u.enrollment_count|default:"0" }} courses
+              </td>
+              <td class="py-4 px-6 text-xs text-gray-400">
+                {{ u.date_joined|date:"M d, Y" }}
+              </td>
+              <td class="py-4 px-6 text-right whitespace-nowrap">
+                <a href="{% url 'admin_panel:user_detail' user_id=u.id %}"
+                   class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold rounded-lg transition-colors">
+                  Inspect User →
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="py-12 text-center text-sm text-gray-500">
+                No users found.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+{% endblock %}

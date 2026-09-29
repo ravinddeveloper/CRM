@@ -1,0 +1,58 @@
+{% extends "base/base.html" %}
+
+{% block title %}System Audit Logs — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+
+  <!-- Admin Nav -->
+  {% include "dashboard/admin/_nav.html" %}
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-purple-400 font-semibold mb-1">
+          <a href="{% url 'admin_panel:dashboard' %}" class="hover:underline">Dashboard</a>
+          <span>/</span>
+          <span>Audit Logs</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white">System Security & Activity Audit Trail</h1>
+        <p class="text-sm text-gray-400 mt-1">Tamper-evident chronological logs of state-changing actions, permission changes, and transactions.</p>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-gray-950/80 text-[11px] uppercase tracking-wider text-gray-400 border-b border-gray-800">
+            <tr>
+              <th class="py-4 px-6">Timestamp</th>
+              <th class="py-4 px-6">Actor / User</th>
+              <th class="py-4 px-6">Event Action</th>
+              <th class="py-4 px-6">Target Resource</th>
+              <th class="py-4 px-6">IP Address</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800 font-mono text-xs">
+            {% for log in logs %}
+            <tr class="hover:bg-gray-800/40">
+              <td class="py-3 px-6 text-gray-400 whitespace-nowrap">{{ log.created_at|date:"Y-m-d H:i:s" }}</td>
+              <td class="py-3 px-6 text-purple-400 font-sans font-semibold">{{ log.actor.email|default:"System" }}</td>
+              <td class="py-3 px-6 text-white font-bold">
+                <span class="px-2 py-0.5 rounded bg-gray-800 border border-gray-700 text-[11px]">{{ log.action }}</span>
+              </td>
+              <td class="py-3 px-6 text-gray-300 font-sans truncate max-w-xs">{{ log.object_repr|default:"-" }}</td>
+              <td class="py-3 px-6 text-gray-500">{{ log.ip_address|default:"127.0.0.1" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="py-12 text-center text-sm font-sans text-gray-500">No audit logs recorded yet.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}

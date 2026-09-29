@@ -1,0 +1,32 @@
+{% extends "base/base.html" %}
+
+{% block title %}Reports — Admin Console{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-3xl font-extrabold text-white">System Reports</h1>
+        <p class="text-sm text-gray-400 mt-1">Exportable financial and academic reports.</p>
+      </div>
+      <a href="{% url 'admin_panel:dashboard' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-semibold text-gray-300 hover:text-white">
+        ← Overview
+      </a>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-6">
+      <a href="{% url 'admin_panel:revenue_report' %}" class="p-6 bg-gray-900 border border-gray-800 rounded-2xl hover:border-purple-500 transition-all block">
+        <div class="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-2xl mb-4">💰</div>
+        <h3 class="text-lg font-bold text-white">Revenue & Orders Report</h3>
+        <p class="text-xs text-gray-400 mt-1">Detailed list of all processed payments and gross revenues.</p>
+      </a>
+      <a href="{% url 'admin_panel:student_report' %}" class="p-6 bg-gray-900 border border-gray-800 rounded-2xl hover:border-brand-500 transition-all block">
+        <div class="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center text-2xl mb-4">🎓</div>
+        <h3 class="text-lg font-bold text-white">Student Enrollment Report</h3>
+        <p class="text-xs text-gray-400 mt-1">Summary of active student enrollments across all categories.</p>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}
