@@ -11,3 +11,16 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
+env/
+
+# Logs & Database
+logs/
+*.log
+*.sqlite3
+db.sqlite3
+
+# Static & Media
+staticfiles/
+media/
+

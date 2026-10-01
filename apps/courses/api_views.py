@@ -1,14 +1,18 @@
-from django.db.models import Q
+from math import ceil
+
 from django.http import Http404
 from rest_framework import generics, permissions
+from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 
 from apps.courses.models import Category, Course, CourseStatus
 from apps.courses.serializers import (
     CategorySerializer,
+    CourseCatalogRecordSerializer,
     CourseDetailSerializer,
-    CourseListSerializer,
 )
+from infrastructure.database.factory import get_course_catalog_repository
 
 
 class StandardResultsPagination(PageNumberPagination):
@@ -22,38 +26,55 @@ class CourseListAPIView(generics.ListAPIView):
     List published courses with filtering by category, difficulty, search query, and pagination.
     """
     permission_classes = [permissions.AllowAny]
-    serializer_class = CourseListSerializer
+    serializer_class = CourseCatalogRecordSerializer
     pagination_class = StandardResultsPagination
 
-    def get_queryset(self):
-        queryset = (
-            Course.objects.filter(status=CourseStatus.PUBLISHED)
-            .select_related("category", "teacher")
-            .prefetch_related("tags")
-            .order_by("-created_at")
+    def list(self, request, *args, **kwargs):
+        paginator = self.paginator
+        page_size = paginator.get_page_size(request) or paginator.page_size
+        page_number = paginator.get_page_number(request, None)
+        if page_number == paginator.last_page_strings[0]:
+            requested_page = None
+        else:
+            try:
+                requested_page = int(page_number)
+                if requested_page < 1:
+                    raise ValueError
+            except (TypeError, ValueError) as exc:
+                raise NotFound("Invalid page.") from exc
+
+        free_param = request.query_params.get("is_free")
+        is_free = free_param.lower() in ("true", "1") if free_param is not None else None
+        repository = get_course_catalog_repository()
+        filters = {
+            "category": request.query_params.get("category") or None,
+            "search": (request.query_params.get("search") or request.query_params.get("q") or "").strip(),
+            "difficulty": request.query_params.get("difficulty") or None,
+            "is_free": is_free,
+        }
+        count, records = repository.list_published(
+            **filters, limit=1 if requested_page is None else page_size,
+            offset=0 if requested_page is None else (requested_page - 1) * page_size,
         )
+        last_page = max(ceil(count / page_size), 1)
+        page = last_page if requested_page is None else min(requested_page, last_page)
+        if requested_page is None or page != requested_page:
+            _, records = repository.list_published(**filters, limit=page_size, offset=(page - 1) * page_size)
 
-        category = self.request.query_params.get("category")
-        if category:
-            queryset = queryset.filter(category__slug=category)
+        def page_link(number):
+            if number < 1 or number > last_page:
+                return None
+            params = request.query_params.copy()
+            params[paginator.page_query_param] = number
+            return request.build_absolute_uri(f"{request.path}?{params.urlencode()}")
 
-        search = self.request.query_params.get("search") or self.request.query_params.get("q")
-        if search:
-            queryset = queryset.filter(
-                Q(title__icontains=search) |
-                Q(short_description__icontains=search) |
-                Q(description__icontains=search)
-            )
-
-        difficulty = self.request.query_params.get("difficulty")
-        if difficulty:
-            queryset = queryset.filter(difficulty=difficulty)
-
-        is_free = self.request.query_params.get("is_free")
-        if is_free is not None:
-            queryset = queryset.filter(is_free=(is_free.lower() in ["true", "1"]))
-
-        return queryset
+        serializer = self.get_serializer(records, many=True)
+        return Response({
+            "count": count,
+            "next": page_link(page + 1),
+            "previous": page_link(page - 1),
+            "results": serializer.data,
+        })
 
 
 class CourseDetailAPIView(generics.RetrieveAPIView):

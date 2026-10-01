@@ -233,6 +233,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.accounts.tasks.drain_pending_account_sync_events",
         "schedule": 60.0,
     },
+    "drain-course-catalog-mongo-outbox": {
+        "task": "apps.courses.tasks.drain_pending_catalog_sync_events",
+        "schedule": 60.0,
+    },
 }
 
 # ---------------------------------------------------------------------------

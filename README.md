@@ -88,7 +88,7 @@ Location checks use browser-reported coordinates and are not proof against GPS s
 
 ### SQL/MongoDB repository migration
 
-The project currently depends on Django's relational ORM throughout its apps. Course-view analytics writes, in-app notification storage/API flows, and the student enrollment-list API have SQL and MongoDB repositories selected centrally by `DATABASE_ENGINE=sql|mongodb`. Account data has SQL and Mongo repositories plus a transactional SQL outbox that can project changes when `MONGO_ACCOUNT_SYNC_ENABLED=True`; authentication, sessions, profile, reset, verification, permission checks, and Django admin still use SQL. The selector is validated during Django startup; it does not replace Django's SQL database. This is not yet a whole-site MongoDB switch, and enrollment writes/access checks remain SQL-backed. Keep `DATABASE_ENGINE=sql` for the running LMS until each domain and its dependent Django flows are migrated and parity-tested. Mongo integration tests run when `MONGO_URI` points to a reachable test database.
+The project currently depends on Django's relational ORM throughout its apps. Course-view analytics writes, in-app notification storage/API flows, student enrollment-list API, and published course catalog-list API have SQL and MongoDB repositories selected centrally by `DATABASE_ENGINE=sql|mongodb`. Account data has SQL and Mongo repositories plus transactional outboxes for identity and catalog projections when their `MONGO_*_SYNC_ENABLED=True` flags are enabled; authentication, sessions, profile, reset, verification, permission checks, course authoring/detail, and Django admin still use SQL. The selector is validated during Django startup; it does not replace Django's SQL database. This is not yet a whole-site MongoDB switch, and enrollment writes/access checks remain SQL-backed. Keep `DATABASE_ENGINE=sql` for the running LMS until each domain and its dependent Django flows are migrated and parity-tested. Mongo integration tests run when `MONGO_URI` points to a reachable test database.
 
 ---
 
@@ -243,6 +243,15 @@ python manage.py migrate_course_views_to_mongodb --settings=config.settings.deve
 ```
 
 The command preserves event IDs, course/user references, and event timestamps. It is safe to rerun.
+
+The published course-list API uses a backend-neutral SQL/Mongo catalog repository. For a Mongo read-pilot rehearsal, apply migrations, enable `MONGO_COURSE_CATALOG_SYNC_ENABLED=True` while `DATABASE_ENGINE=sql`, and restart web, worker, and beat processes before taking the snapshot. This captures catalog changes while preserving SQL as the authoring source:
+
+```bash
+python manage.py migrate_course_catalog_to_mongodb --dry-run --settings=config.settings.development
+python manage.py migrate_course_catalog_to_mongodb --drain-outbox --settings=config.settings.development
+```
+
+Then select `DATABASE_ENGINE=mongodb` and keep catalog synchronization enabled. The API list uses the Mongo projection; course detail, teacher authoring, and the rest of the LMS remain SQL-backed. The projection carries course status, category and teacher display fields, and the existing list filters; Mongo list results are eventually consistent with SQL edits.
 
 For an account cutover rehearsal, apply migrations, set `MONGO_ACCOUNT_SYNC_ENABLED=True` while `DATABASE_ENGINE=sql`, and restart web, worker, and beat processes. This starts durable capture before the initial snapshot. The command copies SQL identities, password hashes, privilege/group grants, profiles, and authentication-token state while leaving SQL untouched:
 

@@ -7,7 +7,6 @@ from django.db import transaction
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 from django.dispatch import receiver
 
-from apps.accounts.models import Profile
 from infrastructure.database.config import DatabaseEngine, get_database_engine
 
 from .models import Category, Course, CourseCatalogSyncEvent, Tag
@@ -80,9 +79,7 @@ def course_tags_changed(sender, instance, action, reverse, pk_set, **kwargs):
 
 
 @receiver(post_save, sender=User, dispatch_uid="courses.mongo_catalog.teacher.save")
-@receiver(post_save, sender=Profile, dispatch_uid="courses.mongo_catalog.teacher.profile")
 def teacher_changed(sender, instance, raw=False, **kwargs):
-    if raw:
+    if raw or kwargs.get("update_fields") is not None and not ({"first_name", "last_name"} & kwargs["update_fields"]):
         return
-    user_id = instance.pk if sender is User else instance.user_id
-    _enqueue_courses(Course.objects.filter(teacher_id=user_id))
+    _enqueue_courses(Course.objects.filter(teacher_id=instance.pk))

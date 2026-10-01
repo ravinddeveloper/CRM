@@ -9,8 +9,25 @@ from apps.notifications.repositories.base import NotificationRepository
 from apps.notifications.repositories.sql import SQLNotificationRepository
 from apps.enrollments.repositories.base import EnrollmentRepository
 from apps.enrollments.repositories.sql import SQLEnrollmentRepository
+from apps.courses.repositories.base import CourseCatalogRepository
+from apps.courses.repositories.sql import SQLCourseCatalogRepository
 
 from .config import DatabaseEngine, get_database_engine
+
+
+def get_course_catalog_repository(engine: str | DatabaseEngine | None = None) -> CourseCatalogRepository:
+    return _get_course_catalog_repository(get_database_engine(engine))
+
+
+@lru_cache(maxsize=2)
+def _get_course_catalog_repository(selected: DatabaseEngine) -> CourseCatalogRepository:
+    if selected is DatabaseEngine.SQL:
+        return SQLCourseCatalogRepository()
+    if selected is DatabaseEngine.MONGODB:
+        from apps.courses.repositories.mongo import MongoCourseCatalogRepository
+
+        return MongoCourseCatalogRepository()
+    raise ValueError(f"No course catalog repository is registered for {selected!r}.")
 
 
 def get_account_repository(engine: str | DatabaseEngine | None = None) -> AccountRepository:

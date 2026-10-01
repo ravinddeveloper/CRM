@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.core.files.storage import default_storage
 from rest_framework import serializers
 
 from apps.courses.models import Category, Course, Section, Tag
@@ -58,6 +60,35 @@ class CourseListSerializer(serializers.ModelSerializer):
             "estimated_duration",
             "created_at",
         ]
+
+
+class CourseCatalogRecordSerializer(serializers.Serializer):
+    """Stable API representation for SQL rows and Mongo catalog documents."""
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    slug = serializers.CharField()
+    short_description = serializers.CharField()
+    thumbnail = serializers.SerializerMethodField()
+    category = CategorySerializer(read_only=True, allow_null=True)
+    teacher_name = serializers.CharField()
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    discount_price = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    effective_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    currency = serializers.CharField()
+    is_free = serializers.BooleanField()
+    status = serializers.CharField()
+    is_featured = serializers.BooleanField()
+    difficulty = serializers.CharField()
+    estimated_duration = serializers.IntegerField()
+    created_at = serializers.DateTimeField()
+
+    def get_thumbnail(self, record):
+        path = record.get("thumbnail")
+        if not path:
+            return None
+        url = default_storage.url(path)
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request and not url.startswith(("http://", "https://")) else url
 
 
 class CourseDetailSerializer(serializers.ModelSerializer):

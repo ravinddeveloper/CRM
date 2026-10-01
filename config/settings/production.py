@@ -46,6 +46,9 @@ if config("DB_SSL_REQUIRE", default=False, cast=bool):
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Production logging
+_LOG_DIR = BASE_DIR / "logs"
+_LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -62,7 +65,7 @@ LOGGING = {
         },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": "/var/log/lms/app.log",
+            "filename": config("LOG_FILE", default=str((BASE_DIR / "logs").joinpath("app.log"))),
             "maxBytes": 1024 * 1024 * 50,  # 50MB
             "backupCount": 10,
             "formatter": "verbose",

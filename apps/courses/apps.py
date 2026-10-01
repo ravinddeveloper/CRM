@@ -8,4 +8,4 @@ class CoursesConfig(AppConfig):
     verbose_name = "Courses"
 
     def ready(self):
-        pass
+        import apps.courses.sync_signals  # noqa: F401
