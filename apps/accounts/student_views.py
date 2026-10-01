@@ -1,14 +1,26 @@
 """Student views - dashboard, learning view, certificates, orders."""
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 
 from apps.enrollments.models import Enrollment
+
+
+def _role_redirect(user):
+    if user.is_admin:
+        return redirect("admin_panel:dashboard")
+    if user.is_teacher:
+        return redirect("teacher:dashboard")
+    if user.is_employee:
+        return redirect("scheduling:staff_attendance")
+    return None
 
 
 @login_required(login_url="accounts:login")
 def student_dashboard_view(request):
     """Student dashboard showing enrolled courses, progress, and stats."""
     user = request.user
+    if not user.is_student:
+        return _role_redirect(user) or redirect("dashboard:redirect")
     enrollments = (
         Enrollment.objects.filter(user=user, status="active")
         .select_related("course", "course__teacher")
@@ -65,6 +77,8 @@ def student_dashboard_view(request):
 @login_required(login_url="accounts:login")
 def student_orders_view(request):
     """Student order history."""
+    if not request.user.is_student:
+        return _role_redirect(request.user) or redirect("dashboard:redirect")
     from apps.orders.models import Order
     orders = (
         Order.objects.filter(user=request.user)

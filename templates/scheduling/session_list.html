@@ -1,0 +1,78 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ SCHEDULE_LABEL }} — {{ PLATFORM_NAME }}{% endblock %}
+
+{% block body %}
+<main class="min-h-screen bg-gray-950 text-gray-100">
+  <header class="border-b border-gray-800 bg-gray-900">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+      <div><h1 class="text-2xl font-bold">{{ SCHEDULE_LABEL }}</h1><p class="mt-1 text-sm text-gray-400">Book a class, workshop, appointment, or live session.</p></div>
+      <a class="text-sm text-indigo-300 hover:text-white" href="{% url 'dashboard:redirect' %}">Back to dashboard</a>
+    </div>
+  </header>
+  <section class="mx-auto max-w-6xl px-4 py-8">
+    {% if messages %}<div class="mb-6 space-y-2">{% for message in messages %}<div class="rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-sm">{{ message }}</div>{% endfor %}</div>{% endif %}
+    <div class="grid gap-5 md:grid-cols-2">
+      {% for session, booking in session_rows %}
+      <article class="rounded-2xl border border-gray-800 bg-gray-900 p-5 shadow-lg">
+        <div class="flex items-start justify-between gap-4">
+          <div><span class="text-xs font-semibold uppercase tracking-wide text-indigo-300">{{ session.get_session_type_display }}</span><h2 class="mt-1 text-xl font-bold">{{ session.title }}</h2></div>
+          {% if session.capacity %}<span class="rounded-full bg-gray-800 px-3 py-1 text-xs">{{ session.seats_taken_count }}/{{ session.capacity }} seats</span>{% endif %}
+        </div>
+        {% if session.description %}<p class="mt-3 whitespace-pre-line text-sm text-gray-300">{{ session.description }}</p>{% endif %}
+        <dl class="mt-4 space-y-2 text-sm text-gray-400">
+          <div><dt class="inline font-semibold text-gray-200">When: </dt><dd class="inline">{{ session.starts_at|date:"D, M j · H:i" }}–{{ session.ends_at|date:"H:i" }}</dd></div>
+          {% if session.instructor %}<div><dt class="inline font-semibold text-gray-200">{{ STAFF_LABEL }}: </dt><dd class="inline">{{ session.instructor.full_name }}</dd></div>{% endif %}
+          {% if session.location_name %}<div><dt class="inline font-semibold text-gray-200">Where: </dt><dd class="inline">{{ session.location_name }}{% if session.address %}, {{ session.address }}{% endif %}</dd></div>{% endif %}
+          {% if session.course %}<div><dt class="inline font-semibold text-gray-200">Course: </dt><dd class="inline">{{ session.course.title }}</dd></div>{% endif %}
+        </dl>
+        <div class="mt-5 border-t border-gray-800 pt-4">
+          {% if can_book and not session.booking_required and session.attendance_required %}
+            {% if booking and booking.checked_in_at %}<p class="text-sm text-emerald-300">Attendance recorded at {{ booking.checked_in_at|date:"H:i" }}.</p>{% else %}
+              <form method="post" action="{% url 'scheduling:member_check_in' session.id %}" {% if REQUIRE_MEMBER_LOCATION %}data-geolocation-form{% endif %}>
+                {% csrf_token %}<input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
+                {% if REQUIRE_MEMBER_LOCATION %}<button class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold hover:bg-indigo-500" type="button" data-geolocation-submit>Mark walk-in attendance</button><span class="ml-2 text-xs text-gray-400" data-geolocation-status></span>{% else %}<button class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold hover:bg-indigo-500">Mark walk-in attendance</button>{% endif %}
+              </form>
+            {% endif %}
+          {% else %}
+          {% if booking and booking.status == "booked" %}
+            <div class="flex flex-wrap gap-2">
+              {% if session.meeting_url %}<a class="rounded-lg border border-gray-700 px-3 py-2 text-sm hover:bg-gray-800" href="{{ session.meeting_url }}" target="_blank" rel="noopener">Join live session</a>{% endif %}
+              {% if session.attendance_required and not booking.checked_in_at %}
+              <form method="post" action="{% url 'scheduling:member_check_in' session.id %}" data-geolocation-form>
+                {% csrf_token %}<input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
+                {% if REQUIRE_MEMBER_LOCATION %}<button class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold hover:bg-indigo-500" type="button" data-geolocation-submit>Mark attendance</button><span class="ml-2 text-xs text-gray-400" data-geolocation-status></span>{% else %}<button class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold hover:bg-indigo-500">Mark attendance</button>{% endif %}
+              </form>{% endif %}
+              <form method="post" action="{% url 'scheduling:session_cancel' booking.id %}">{% csrf_token %}<button class="rounded-lg border border-gray-700 px-3 py-2 text-sm hover:bg-gray-800">Cancel booking</button></form>
+            </div>
+            {% if booking.checked_in_at %}<p class="mt-2 text-xs text-emerald-300">Attendance recorded at {{ booking.checked_in_at|date:"H:i" }}.</p>{% endif %}
+          {% elif booking and booking.status == "waitlisted" %}
+            <p class="text-sm text-amber-300">You are on the waitlist.</p><form class="mt-2" method="post" action="{% url 'scheduling:session_cancel' booking.id %}">{% csrf_token %}<button class="rounded-lg border border-gray-700 px-3 py-2 text-sm">Leave waitlist</button></form>
+          {% elif can_book %}
+            {% if booking and booking.status == "cancelled" or not booking %}<form method="post" action="{% url 'scheduling:session_book' session.id %}">{% csrf_token %}<button class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500">Book {{ CLASS_LABEL|lower }}</button></form>{% endif %}
+          {% else %}<p class="text-xs text-gray-500">Staff schedule view.</p>
+          {% endif %}
+          {% endif %}
+        </div>
+      </article>
+      {% empty %}<div class="rounded-xl border border-dashed border-gray-700 p-10 text-center text-gray-400 md:col-span-2">There are no upcoming {{ CLASS_LABEL|lower }}s on the schedule yet.</div>{% endfor %}
+    </div>
+  </section>
+</main>
+<script>
+document.querySelectorAll('[data-geolocation-submit]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const form = button.closest('[data-geolocation-form]');
+    const status = form.querySelector('[data-geolocation-status]');
+    if (!navigator.geolocation) { status.textContent = 'Location is not available in this browser.'; return; }
+    status.textContent = 'Checking device location…';
+    navigator.geolocation.getCurrentPosition((position) => {
+      form.elements.latitude.value = position.coords.latitude;
+      form.elements.longitude.value = position.coords.longitude;
+      form.elements.accuracy.value = position.coords.accuracy;
+      form.submit();
+    }, () => { status.textContent = 'Location permission is needed to continue.'; }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+  });
+});
+</script>
+{% endblock %}

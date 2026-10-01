@@ -15,6 +15,7 @@ from django.utils.translation import gettext_lazy as _
 class UserRole(models.TextChoices):
     ADMIN = "admin", _("Admin")
     TEACHER = "teacher", _("Teacher")
+    EMPLOYEE = "employee", _("Employee / Staff")
     STUDENT = "student", _("Student")
 
 
@@ -112,6 +113,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_teacher(self):
         return self.role == UserRole.TEACHER
+
+    @property
+    def is_employee(self):
+        return self.role == UserRole.EMPLOYEE
 
     @property
     def is_student(self):

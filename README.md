@@ -66,6 +66,14 @@ After creating a Django superuser and applying migrations, open `/django-admin/`
 
 The logo and favicon are stored using Django's configured media storage. The production Nginx configuration serves only `/media/branding/` publicly; keep the general media directory private and use the protected storage flow for course content.
 
+### Classes, memberships, and attendance
+
+The **Classes, bookings and attendance** area in Django Admin manages live online, in-person, hybrid, and appointment sessions, instructors, capacities, waitlists, and attendance. Members can book at `/sessions/`; employees use `/staff/attendance/` to clock in and out. The staff role is assigned to an account by an administrator. Existing teachers can also use the employee time clock.
+
+For a dance studio, gym, fitness business, or workshop provider, set the business type and terms in Platform Settings, add the desired site coordinates, choose the allowed geofence radius and location accuracy, then enable staff and/or member location checks. Each scheduled session can override the site coordinates/radius and can optionally require a linked paid course enrollment or active membership. Membership plans and member memberships are currently managed by staff in Django Admin; membership checkout and recurring billing are not connected to the payment gateway yet.
+
+Location checks use browser-reported coordinates and are not proof against GPS spoofing. For payroll or regulated attendance, use a trusted on-site device or manager approval as an additional control.
+
 ## 3. Technology Stack
 
 - **Backend**: Python 3.12+, Django 5.x / 6.x, Django REST Framework (DRF), `drf-spectacular` (OpenAPI 3.0)

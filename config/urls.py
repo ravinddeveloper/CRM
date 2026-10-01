@@ -30,6 +30,9 @@ urlpatterns = [
     # Learning interface
     path("learn/", include("apps.progress.urls", namespace="learn")),
 
+    # Business schedules, bookings, and attendance
+    path("", include("apps.scheduling.urls", namespace="scheduling")),
+
     # Orders and payments
     path("orders/", include("apps.orders.urls", namespace="orders")),
     path("payments/", include("apps.payments.urls", namespace="payments")),

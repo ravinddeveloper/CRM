@@ -1,6 +1,7 @@
 """Base models shared across all apps."""
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -29,6 +30,16 @@ class BaseModel(UUIDModel, TimeStampedModel):
         abstract = True
 
 
+class BusinessType(models.TextChoices):
+    LEARNING = "learning", "Learning and courses"
+    DANCE = "dance", "Dance studio"
+    FITNESS = "fitness", "Fitness classes"
+    GYM = "gym", "Gym and membership"
+    STUDIO = "studio", "Studio and workshops"
+    COACHING = "coaching", "Coaching"
+    OTHER = "other", "Other service business"
+
+
 class PlatformSettings(models.Model):
     """Editable public identity and billing details for this LMS instance."""
 
@@ -43,6 +54,20 @@ class PlatformSettings(models.Model):
     billing_address = models.TextField(blank=True)
     tax_registration_number = models.CharField(max_length=80, blank=True)
     invoice_footer = models.CharField(max_length=240, blank=True)
+    business_type = models.CharField(max_length=24, choices=BusinessType.choices, default=BusinessType.LEARNING)
+    member_label = models.CharField(max_length=48, default="Student")
+    staff_label = models.CharField(max_length=48, default="Teacher")
+    class_label = models.CharField(max_length=48, default="Class")
+    schedule_label = models.CharField(max_length=48, default="Schedule")
+    allow_staff_check_in = models.BooleanField(default=True)
+    require_staff_location = models.BooleanField(default=False)
+    require_member_location = models.BooleanField(default=False)
+    attendance_radius_meters = models.PositiveIntegerField(default=150)
+    max_location_accuracy_meters = models.PositiveIntegerField(default=150)
+    attendance_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    attendance_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_in_early_minutes = models.PositiveSmallIntegerField(default=30)
+    check_in_late_minutes = models.PositiveSmallIntegerField(default=20)
     primary_color = models.CharField(
         max_length=7,
         default="#4f46e5",
@@ -53,6 +78,15 @@ class PlatformSettings(models.Model):
     class Meta:
         verbose_name = "platform settings"
         verbose_name_plural = "platform settings"
+
+    def clean(self):
+        super().clean()
+        if (self.attendance_latitude is None) != (self.attendance_longitude is None):
+            raise ValidationError("Set both business attendance coordinates or leave both empty.")
+        if self.attendance_latitude is not None and not (-90 <= self.attendance_latitude <= 90):
+            raise ValidationError({"attendance_latitude": "Latitude must be between -90 and 90."})
+        if self.attendance_longitude is not None and not (-180 <= self.attendance_longitude <= 180):
+            raise ValidationError({"attendance_longitude": "Longitude must be between -180 and 180."})
 
     def save(self, *args, **kwargs):
         self.pk = 1
@@ -96,6 +130,20 @@ def get_platform_settings():
             "tax_registration_number": "",
             "invoice_footer": "",
             "primary_color": "#4f46e5",
+            "business_type": BusinessType.LEARNING,
+            "member_label": "Student",
+            "staff_label": "Teacher",
+            "class_label": "Class",
+            "schedule_label": "Schedule",
+            "allow_staff_check_in": True,
+            "require_staff_location": False,
+            "require_member_location": False,
+            "attendance_radius_meters": 150,
+            "max_location_accuracy_meters": 150,
+            "attendance_latitude": None,
+            "attendance_longitude": None,
+            "check_in_early_minutes": 30,
+            "check_in_late_minutes": 20,
         }
     try:
         cache.set(cache_key, value, 300)

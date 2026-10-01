@@ -1,0 +1,63 @@
+{% extends "base/base.html" %}
+
+{% block title %}Staff attendance — {{ PLATFORM_NAME }}{% endblock %}
+
+{% block body %}
+<main class="min-h-screen bg-gray-950 text-gray-100">
+  <section class="mx-auto max-w-3xl px-4 py-10">
+    <a class="text-sm text-indigo-300 hover:text-white" href="{% url 'dashboard:redirect' %}">← Dashboard</a>
+    <h1 class="mt-4 text-3xl font-bold">Staff attendance</h1>
+    <p class="mt-2 text-sm text-gray-400">Use this time clock to record the start and end of your shift.</p>
+    {% if messages %}<div class="mt-5 space-y-2">{% for message in messages %}<div class="rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 text-sm">{{ message }}</div>{% endfor %}</div>{% endif %}
+    <div class="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-6">
+      {% if not ALLOW_STAFF_CHECK_IN %}
+        <p class="text-sm text-amber-300">Staff time-clock check-in is disabled by the administrator.</p>
+      {% elif open_shift %}
+        <p class="text-sm text-emerald-300">Clocked in since {{ open_shift.checked_in_at|date:"D, M j · H:i" }}.</p>
+        <form class="mt-4" method="post" action="{% url 'scheduling:staff_attendance_action' %}" {% if REQUIRE_STAFF_LOCATION %}data-geolocation-form{% endif %}>
+          {% csrf_token %}<input type="hidden" name="action" value="clock_out"><input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
+          {% if REQUIRE_STAFF_LOCATION %}<button class="rounded-lg bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-500" type="button" data-geolocation-submit>Get location and clock out</button><span class="ml-2 text-xs text-gray-400" data-geolocation-status></span>{% else %}<button class="rounded-lg bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-500">Clock out</button>{% endif %}
+        </form>
+      {% else %}
+        <p class="text-sm text-gray-300">You are not currently clocked in.</p>
+        <form class="mt-4" method="post" action="{% url 'scheduling:staff_attendance_action' %}" {% if REQUIRE_STAFF_LOCATION %}data-geolocation-form{% endif %}>
+          {% csrf_token %}<input type="hidden" name="action" value="clock_in"><input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
+          {% if REQUIRE_STAFF_LOCATION %}<button class="rounded-lg bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-500" type="button" data-geolocation-submit>Get location and clock in</button><span class="ml-2 text-xs text-gray-400" data-geolocation-status></span>{% else %}<button class="rounded-lg bg-indigo-600 px-5 py-3 font-semibold hover:bg-indigo-500">Clock in</button>{% endif %}
+        </form>
+      {% endif %}
+      {% if REQUIRE_STAFF_LOCATION %}<p class="mt-4 text-xs text-gray-500">Your browser will ask for location access. The app checks your distance from the business location and stores the distance and accuracy for this time-clock record.</p>{% endif %}
+      <p class="mt-3 text-xs text-gray-500">Browser location is device-reported and may be inaccurate or altered. For payroll-grade verification, pair this with a trusted on-site device or manager review.</p>
+    </div>
+    <section class="mt-8">
+      <h2 class="text-lg font-semibold">Recent shifts</h2>
+      <div class="mt-3 overflow-hidden rounded-xl border border-gray-800">
+        {% for shift in shifts %}
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 bg-gray-900 px-4 py-3 text-sm last:border-0">
+          <span>{{ shift.checked_in_at|date:"D, M j" }}</span>
+          <span>In {{ shift.checked_in_at|date:"H:i" }} · Out {% if shift.checked_out_at %}{{ shift.checked_out_at|date:"H:i" }}{% else %}<span class="text-emerald-300">Open</span>{% endif %}</span>
+          {% if shift.check_in_distance_meters != None %}<span class="text-gray-500">{{ shift.check_in_distance_meters }} m from site</span>{% endif %}
+        </div>
+        {% empty %}<p class="bg-gray-900 px-4 py-5 text-sm text-gray-400">No shift records yet.</p>{% endfor %}
+      </div>
+    </section>
+  </section>
+</main>
+{% if REQUIRE_STAFF_LOCATION %}
+<script>
+document.querySelectorAll('[data-geolocation-submit]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const form = button.closest('[data-geolocation-form]');
+    const status = form.querySelector('[data-geolocation-status]');
+    if (!navigator.geolocation) { status.textContent = 'Location is not available in this browser.'; return; }
+    status.textContent = 'Checking device location…';
+    navigator.geolocation.getCurrentPosition((position) => {
+      form.elements.latitude.value = position.coords.latitude;
+      form.elements.longitude.value = position.coords.longitude;
+      form.elements.accuracy.value = position.coords.accuracy;
+      form.submit();
+    }, () => { status.textContent = 'Location permission is needed to continue.'; }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

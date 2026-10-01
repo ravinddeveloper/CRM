@@ -24,6 +24,7 @@ config.urls ── public pages, account flows, dashboards, learning, commerce, 
         ├── apps.analytics      reporting queries and dashboard data
         ├── apps.certificates   completion certificates
         ├── apps.audit          administrative activity records
+        ├── apps.scheduling     live classes, appointments, memberships and attendance
         └── apps.common         shared settings, middleware and utilities
         │
         ├── PostgreSQL (SQLite for local/testing configurations)
@@ -44,6 +45,12 @@ config.urls ── public pages, account flows, dashboards, learning, commerce, 
 ### Learning progress
 
 Lecture progress is stored per learner and lecture. The progress service owns position and completion updates; course-level progress is derived from lecture progress rather than an untrusted client flag.
+
+### Business sessions and attendance
+
+`apps.scheduling` handles bookable live, in-person, hybrid, and appointment sessions; capacity and waitlists; optional course-enrollment or membership gates; member attendance; and employee time-clock records. Platform-level business type, public terms, base-site coordinates, geofence radius, accuracy tolerance, attendance windows, and whether each role requires location are configured in Platform Settings. A session can supply its own attendance coordinates and radius. Check-in stores the verified distance and accuracy rather than raw device coordinates.
+
+Browser geolocation is device-reported and can be spoofed. The server validates coordinates and applies the geofence, but this is a practical attendance control rather than payroll-grade proof of physical presence. Stronger assurance requires trusted on-site hardware or manager review.
 
 ### Platform identity and invoices
 

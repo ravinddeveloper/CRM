@@ -18,13 +18,15 @@
             <a href="{% url 'teacher:dashboard' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white">Overview</a>
             <a href="{% url 'teacher:course_list' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-800">My Courses</a>
             <a href="{% url 'teacher:analytics' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-800">Analytics</a>
+            <a href="{% url 'scheduling:sessions' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-800">{{ SCHEDULE_LABEL }}</a>
+            <a href="{% url 'scheduling:staff_attendance' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-800">Time clock</a>
           </div>
         </div>
         <div class="flex items-center gap-3">
           <a href="{% url 'teacher:course_create' %}" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-brand-500/20">
             + New Course
           </a>
-          <a href="{% url 'accounts:student_dashboard' %}" class="px-3 py-1.5 text-xs text-gray-400 hover:text-white">Student View</a>
+          <a href="{% url 'marketplace:course_list' %}" class="px-3 py-1.5 text-xs text-gray-400 hover:text-white">Marketplace</a>
         </div>
       </div>
     </div>

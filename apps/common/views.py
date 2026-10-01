@@ -1,6 +1,7 @@
 """Common views - error pages, dashboard redirect."""
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
+from django.core.exceptions import PermissionDenied
 
 
 def error_400(request, exception=None):
@@ -27,5 +28,9 @@ def dashboard_redirect(request):
         return redirect("admin_panel:dashboard")
     elif user.is_teacher:
         return redirect("teacher:dashboard")
+    elif user.is_employee:
+        return redirect("scheduling:staff_attendance")
+    elif user.role != "student":
+        raise PermissionDenied("This account does not have a member dashboard.")
     else:
         return redirect("student:dashboard")
