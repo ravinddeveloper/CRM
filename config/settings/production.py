@@ -38,14 +38,9 @@ CSP_IMG_SRC = ("'self'", "data:", "https:")
 CSP_FONT_SRC = ("'self'", "https://fonts.gstatic.com")
 CSP_FRAME_SRC = ("https://api.razorpay.com", "https://js.stripe.com")
 
-# Database (production uses PostgreSQL via DATABASE_URL)
-DATABASES = {
-    "default": dj_database_url.config(
-        conn_max_age=600,
-        conn_health_checks=True,
-        ssl_require=config("DB_SSL_REQUIRE", default=False, cast=bool),
-    )
-}
+# Database SSL (production URL or DB_* settings are resolved in base.py).
+if config("DB_SSL_REQUIRE", default=False, cast=bool):
+    DATABASES["default"].setdefault("OPTIONS", {})["sslmode"] = "require"
 
 # Static files
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"

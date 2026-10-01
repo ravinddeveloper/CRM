@@ -7,6 +7,9 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from infrastructure.database.config import DatabaseEngine, get_database_engine
+from infrastructure.database.exceptions import ApplicationValidationError, EntityConflictError
+
 from .models import EmailVerificationToken, PasswordResetToken, Profile
 
 User = get_user_model()
@@ -34,14 +37,29 @@ class AccountService:
                 username = f"{base}{counter}"
                 counter += 1
 
-        user = User.objects.create_user(
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            username=username,
-            role="student",
-        )
+        if get_database_engine() is DatabaseEngine.SQL:
+            from .repository_service import AccountRepositoryService
+
+            try:
+                account = AccountRepositoryService().create_user(
+                    email=email, password=password, first_name=first_name,
+                    last_name=last_name, username=username, role="student",
+                )
+                user = User.objects.get(pk=account.id)
+            except (ApplicationValidationError, EntityConflictError) as exc:
+                raise ValidationError(str(exc)) from exc
+        else:
+            # Django authentication, sessions, and the account's dependent SQL
+            # records are not Mongo-backed yet. Preserve the working auth path
+            # until that whole aggregate can be cut over together.
+            user = User.objects.create_user(
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                username=username,
+                role="student",
+            )
 
         # Ensure profile exists (handled safely alongside post_save signal)
         Profile.objects.get_or_create(user=user)

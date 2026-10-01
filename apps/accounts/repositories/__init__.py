@@ -1,0 +1,1 @@
+"""Account persistence adapters."""

@@ -61,3 +61,25 @@ class Enrollment(BaseModel):
     def revoke(self):
         self.status = EnrollmentStatus.REVOKED
         self.save(update_fields=["status"])
+
+
+class EnrollmentSyncEvent(models.Model):
+    """Durable SQL outbox for projecting enrollment changes into MongoDB."""
+    UPSERT = "upsert"
+    DELETE = "delete"
+    EVENT_CHOICES = [(UPSERT, "Upsert"), (DELETE, "Delete")]
+
+    event_type = models.CharField(max_length=10, choices=EVENT_CHOICES)
+    enrollment_id = models.UUIDField(db_index=True)
+    payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["processed_at", "created_at"])]
+
+    def __str__(self):
+        return f"Enrollment sync {self.event_type}: {self.enrollment_id}"

@@ -1,17 +1,12 @@
+"""Backend-neutral notification API serialization."""
 from rest_framework import serializers
 
-from apps.notifications.models import Notification
 
-
-class NotificationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Notification
-        fields = [
-            "id",
-            "title",
-            "message",
-            "notification_type",
-            "is_read",
-            "action_url",
-            "created_at",
-        ]
+class NotificationSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    title = serializers.CharField()
+    message = serializers.CharField()
+    notification_type = serializers.CharField()
+    is_read = serializers.BooleanField()
+    action_url = serializers.CharField(allow_blank=True)
+    created_at = serializers.DateTimeField()

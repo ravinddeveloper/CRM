@@ -8,6 +8,7 @@ from pathlib import Path
 
 import dj_database_url
 from decouple import Csv, config
+from infrastructure.database.sql import build_sql_database_url
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -111,12 +112,18 @@ ASGI_APPLICATION = "config.asgi.application"
 # ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
+DATABASE_URL = build_sql_database_url(
+    database_url=config("DATABASE_URL", default=""),
+    db_host=config("DB_HOST", default=""),
+    db_port=config("DB_PORT", default=5432, cast=int),
+    db_name=config("DB_NAME", default="myportal"),
+    db_user=config("DB_USER", default=""),
+    db_password=config("DB_PASSWORD", default=""),
+    sqlite_url=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+)
 DATABASES = {
-    "default": dj_database_url.config(
-        default=config(
-            "DATABASE_URL",
-            default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        ),
+    "default": dj_database_url.parse(
+        DATABASE_URL,
         conn_max_age=600,
         conn_health_checks=True,
     )
@@ -213,6 +220,20 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_BEAT_SCHEDULE = {
+    "drain-enrollment-mongo-outbox": {
+        "task": "apps.enrollments.tasks.drain_pending_enrollment_sync_events",
+        "schedule": 60.0,
+    },
+    "drain-notification-mongo-outbox": {
+        "task": "apps.notifications.tasks.drain_pending_notification_sync_events",
+        "schedule": 60.0,
+    },
+    "drain-account-mongo-outbox": {
+        "task": "apps.accounts.tasks.drain_pending_account_sync_events",
+        "schedule": 60.0,
+    },
+}
 
 # ---------------------------------------------------------------------------
 # REST Framework

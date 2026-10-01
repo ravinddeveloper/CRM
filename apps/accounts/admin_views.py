@@ -682,6 +682,7 @@ def transaction_detail_view(request, order_id):
 
 
 @admin_required
+@transaction.atomic
 @require_http_methods(["POST"])
 def transaction_refund_view(request, order_id):
     """Admin action to refund an order and revoke enrolled access."""
@@ -700,7 +701,13 @@ def transaction_refund_view(request, order_id):
     )
 
     # Revoke course access
-    revoked_count = Enrollment.objects.filter(order=order).update(status=EnrollmentStatus.REVOKED)
+    revoked_enrollments = Enrollment.objects.select_for_update().filter(order=order)
+    revoked_count = 0
+    for enrollment in revoked_enrollments:
+        if enrollment.status != EnrollmentStatus.REVOKED:
+            enrollment.status = EnrollmentStatus.REVOKED
+            enrollment.save(update_fields=["status"])
+            revoked_count += 1
 
     # Audit log
     AuditLog.objects.create(

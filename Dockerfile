@@ -48,8 +48,9 @@ CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 # ── Production stage ──────────────────────────────────────────────────────────
 FROM base AS production
 
-# Install production-only dependencies (gunicorn is in base.txt)
-RUN pip install gunicorn
+# Install production server dependencies separately from the shared runtime.
+COPY requirements/production.txt requirements/production.txt
+RUN pip install -r requirements/production.txt
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser \

@@ -5,7 +5,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
 
-from apps.analytics.models import CourseView
+from apps.analytics.services import AnalyticsService
 from apps.courses.models import Category, Course, CourseStatus
 
 logger = logging.getLogger("apps.courses")
@@ -114,9 +114,10 @@ def course_detail_view(request, slug):
 
     # Track view
     if not request.session.get(f"viewed_course_{course.id}"):
-        CourseView.objects.create(
-            course=course,
-            user=user if is_authenticated else None,
+        AnalyticsService.record_course_view(
+            course_id=course.id,
+            user_id=user.id if is_authenticated else None,
+            ip_address=request.META.get("REMOTE_ADDR"),
             session_key=request.session.session_key or "",
         )
         course.total_views += 1

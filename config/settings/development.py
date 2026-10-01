@@ -12,13 +12,8 @@ if importlib.util.find_spec("debug_toolbar"):
 INTERNAL_IPS = ["127.0.0.1", "localhost"]
 ALLOWED_HOSTS = ["*"]
 
-# Use SQLite for easy local development (override with DATABASE_URL for PostgreSQL)
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
+# DATABASE_URL/DB_* from base.py select the development SQL database. SQLite is
+# the fallback when no SQL connection variables are provided.
 
 # Email to console in development
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

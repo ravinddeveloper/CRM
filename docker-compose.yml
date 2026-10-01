@@ -6,6 +6,7 @@ version: "3.9"
 # Services:
 #   web       – Django application (Gunicorn in prod / runserver in dev)
 #   postgres  – PostgreSQL 15 database
+#   mongodb   – optional MongoDB 7 service for migrated repository domains
 #   redis     – Redis 7 (cache + Celery broker)
 #   celery    – Celery worker for async tasks (emails, invoices, etc.)
 #   celery-beat – Celery beat scheduler (periodic tasks)
@@ -22,7 +23,17 @@ x-django-env: &django-env
   env_file:
     - .env
   environment:
-    - DJANGO_SETTINGS_MODULE=config.settings.development
+    DJANGO_SETTINGS_MODULE: config.settings.development
+    DATABASE_ENGINE: ${DATABASE_ENGINE:-sql}
+    DATABASE_URL: ""
+    DB_HOST: postgres
+    DB_PORT: 5432
+    DB_NAME: ${POSTGRES_DB:-lmsdb}
+    DB_USER: ${POSTGRES_USER:-lmsuser}
+    DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    MONGO_URI: ${MONGO_URI_DOCKER:-mongodb://mongodb:27017}
+    MONGO_DB_NAME: ${MONGO_DB_NAME:-myportal}
+    MONGO_ENROLLMENT_SYNC_ENABLED: ${MONGO_ENROLLMENT_SYNC_ENABLED:-false}
   depends_on:
     postgres:
       condition: service_healthy
@@ -46,7 +57,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-lmsdb}
       POSTGRES_USER: ${POSTGRES_USER:-lmsuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lmspass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -56,6 +67,22 @@ services:
       retries: 5
     ports:
       - "5432:5432"
+
+  # Optional MongoDB for migrated repositories. Start with --profile mongodb.
+  mongodb:
+    image: mongo:7
+    profiles: ["mongodb"]
+    restart: unless-stopped
+    command: ["mongod", "--bind_ip_all"]
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "127.0.0.1:27017:27017"
 
   # ──────────────────────────────────────────────────────────
   # Redis
@@ -83,7 +110,7 @@ services:
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
     volumes:
       - minio_data:/data
     ports:
@@ -103,7 +130,7 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-        mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
+        mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env};
         mc mb --ignore-existing myminio/${S3_BUCKET_NAME:-lms-private};
         mc anonymous set none myminio/${S3_BUCKET_NAME:-lms-private};
         echo 'MinIO bucket initialised.';
@@ -181,6 +208,7 @@ services:
 
 volumes:
   postgres_data:
+  mongodb_data:
   redis_data:
   minio_data:
   static_volume:

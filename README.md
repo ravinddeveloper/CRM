@@ -86,6 +86,10 @@ Location checks use browser-reported coordinates and are not proof against GPS s
 - **Frontend**: Django Templates, Tailwind CSS, Alpine.js, HTMX
 - **WSGI / Web Server**: Gunicorn + Nginx reverse proxy + WhiteNoise
 
+### SQL/MongoDB repository migration
+
+The project currently depends on Django's relational ORM throughout its apps. Course-view analytics writes, in-app notification storage/API flows, and the student enrollment-list API have SQL and MongoDB repositories selected centrally by `DATABASE_ENGINE=sql|mongodb`. Account data has SQL and Mongo repositories plus a transactional SQL outbox that can project changes when `MONGO_ACCOUNT_SYNC_ENABLED=True`; authentication, sessions, profile, reset, verification, permission checks, and Django admin still use SQL. The selector is validated during Django startup; it does not replace Django's SQL database. This is not yet a whole-site MongoDB switch, and enrollment writes/access checks remain SQL-backed. Keep `DATABASE_ENGINE=sql` for the running LMS until each domain and its dependent Django flows are migrated and parity-tested. Mongo integration tests run when `MONGO_URI` points to a reachable test database.
+
 ---
 
 ## 4. User Roles & Permissions
@@ -191,10 +195,77 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements/base.txt -r requirements/development.txt
 ```
 
+Production containers install `requirements/production.txt` on top of the base dependencies.
+
 ### 3. Setup environment configuration
 ```bash
 cp .env.example .env
 ```
+
+The example defaults to PostgreSQL on `localhost`. To develop without a local PostgreSQL server, set `DATABASE_URL=sqlite:///db.sqlite3` in `.env`; Docker Compose overrides the connection to use its PostgreSQL service. Alternatively, set `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` for PostgreSQL without constructing a URL.
+
+### MongoDB repository integration tests (migration pilot)
+
+MongoDB is available as an optional local test service without starting PostgreSQL:
+
+```bash
+docker compose --profile mongodb up -d mongodb
+$env:MONGO_URI = "mongodb://localhost:27017" # PowerShell; use export in bash
+python -m pytest tests/mongodb --ds=config.settings.testing
+```
+
+### PostgreSQL test run
+
+The test settings use in-memory SQLite by default. To run the same Django and repository tests against PostgreSQL, start the PostgreSQL service and set `TEST_DATABASE_URL` to its connection URL before running pytest. For example, with the local compose service:
+
+```powershell
+docker compose up -d postgres
+$env:TEST_DATABASE_URL = "postgresql://lms_user:your-password@localhost:5432/lms_db"
+python -m pytest --ds=config.settings.testing
+```
+
+This uses the normal test database lifecycle on PostgreSQL; it does not replace `DATABASE_URL` used by the application.
+
+This profile supports Mongo repository integration tests for account CRUD adapters, analytics writes and history import, notifications, and enrollment repository import/listing. The full web application continues to use SQL until its remaining domains and authentication flows are migrated.
+
+For a notification cutover without losing writes during the snapshot, apply migrations, set `MONGO_NOTIFICATION_SYNC_ENABLED=True` while `DATABASE_ENGINE=sql`, and restart web and Celery worker processes. Snapshot legacy rows and drain the SQL outbox:
+
+```bash
+python manage.py migrate_notifications_to_mongodb --drain-outbox --settings=config.settings.development
+```
+
+After it completes, select `DATABASE_ENGINE=mongodb`, keep the sync flag enabled, and restart web, worker, and beat processes. Future notification writes/read-state changes then go directly to Mongo; queued SQL changes are retried by Celery and Beat or manually with `python manage.py sync_notification_outbox --settings=config.settings.development`. The backfill is idempotent and preserves notification IDs, read state, and timestamps. It does not migrate accounts or other domain data.
+
+Course-view analytics history has its own SQL-to-Mongo import:
+
+```bash
+python manage.py migrate_course_views_to_mongodb --settings=config.settings.development
+```
+
+The command preserves event IDs, course/user references, and event timestamps. It is safe to rerun.
+
+For an account cutover rehearsal, apply migrations, set `MONGO_ACCOUNT_SYNC_ENABLED=True` while `DATABASE_ENGINE=sql`, and restart web, worker, and beat processes. This starts durable capture before the initial snapshot. The command copies SQL identities, password hashes, privilege/group grants, profiles, and authentication-token state while leaving SQL untouched:
+
+```bash
+python manage.py migrate_accounts_to_mongodb --dry-run --settings=config.settings.development
+python manage.py migrate_accounts_to_mongodb --batch-size 250 --drain-outbox --settings=config.settings.development
+```
+
+The snapshot is resumable and preserves UUIDs. The SQL outbox and Beat recovery task continue projecting subsequent account changes. This still does not move authentication, profile, password reset, verification, permission checks, or Django admin off SQL, so do not treat it as an account cutover or whole-site MongoDB mode.
+
+After selecting `DATABASE_ENGINE=mongodb`, pending account projections can also be retried manually without repeating the snapshot:
+
+```bash
+python manage.py sync_account_outbox --settings=config.settings.development
+```
+
+Enrollment replication uses a SQL outbox so the relational enrollment lifecycle remains authoritative while the Mongo listing is brought current. For an initial cutover, first apply migrations, set `MONGO_ENROLLMENT_SYNC_ENABLED=True` while `DATABASE_ENGINE=sql`, and restart the web, Celery worker, and beat processes. Then snapshot existing rows and drain any changes that happened during the copy:
+
+```bash
+python manage.py migrate_enrollments_to_mongodb --drain-outbox --settings=config.settings.development
+```
+
+Once it completes, set `DATABASE_ENGINE=mongodb` while keeping `MONGO_ENROLLMENT_SYNC_ENABLED=True`, start with `docker compose --profile mongodb up -d`, and restart web, worker, and beat processes. New and changed enrollments are projected after SQL commit; Celery retries failures and Beat scans pending outbox rows every minute. `python manage.py sync_enrollment_outbox --settings=config.settings.development` is also available for a manual drain after Mongo is selected. The snapshot is idempotent and preserves enrollment IDs and timestamps. SQL remains authoritative for enrollment writes, access checks, progress, and administration, so the Mongo listing is an eventually consistent read model rather than an independent enrollment database.
 
 ### 4. Run database migrations
 ```bash

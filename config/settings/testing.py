@@ -1,15 +1,22 @@
 """Testing settings."""
+import dj_database_url
+from decouple import config as env_config
+
 from .base import *
 
 DEBUG = False
 TESTING = True
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
+test_database_url = env_config("TEST_DATABASE_URL", default="").strip()
+if test_database_url:
+    DATABASES = {"default": dj_database_url.parse(test_database_url, conn_max_age=0)}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
     }
-}
 
 # Disable caching in tests
 CACHES = {

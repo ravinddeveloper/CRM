@@ -147,6 +147,23 @@ class TestEnrollmentsAPI(TestCase):
             ids = [str(e.get("user")) for e in response.data.get("results", [])]
             self.assertNotIn(str(student_a.id), ids)
 
+    def test_enrollment_list_keeps_course_detail_and_pagination_shape(self):
+        student = make_student()
+        course = make_course(status="published")
+        make_enrollment(user=student, course=course)
+        self.client.force_authenticate(user=student)
+
+        response = self.client.get("/api/v1/enrollments/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertIsNone(response.data["next"])
+        self.assertIsNone(response.data["previous"])
+        result = response.data["results"][0]
+        self.assertEqual(result["user"], str(student.pk))
+        self.assertEqual(result["course"], str(course.pk))
+        self.assertEqual(result["course_detail"]["id"], str(course.pk))
+
 
 class TestNotificationsAPI(TestCase):
     """Tests for /api/v1/notifications/ endpoints."""
