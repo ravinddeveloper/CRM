@@ -22,14 +22,24 @@
         <p class="text-sm text-gray-400 mt-0.5">Create, edit, organize curriculum modules, and manage course publications.</p>
       </div>
 
-      <!-- Add New Course CTA -->
-      <a href="{% url 'admin_panel:course_create' %}"
-         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/25 transition-all transform hover:-translate-y-0.5">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-        </svg>
-        <span>+ Add New Course</span>
-      </a>
+      <!-- Actions -->
+      <div class="flex items-center gap-3">
+        <a href="{% url 'admin_panel:category_list' %}"
+           class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-gray-300 hover:text-white border border-gray-800 rounded-xl text-sm font-semibold transition-colors">
+          <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          <span>Categories</span>
+        </a>
+
+        <a href="{% url 'admin_panel:course_create' %}"
+           class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/25 transition-all transform hover:-translate-y-0.5">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>+ Add New Course</span>
+        </a>
+      </div>
     </div>
 
     <!-- Filters & Search Toolbar -->
@@ -47,6 +57,10 @@
         <a href="{% url 'admin_panel:course_list' %}?status=draft"
            class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors {% if selected_status == 'draft' %}bg-purple-600 text-white{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %}">
           Drafts ({{ draft_count }})
+        </a>
+        <a href="{% url 'admin_panel:course_list' %}?status=archived"
+           class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors {% if selected_status == 'archived' %}bg-purple-600 text-white{% else %}text-gray-400 hover:text-white hover:bg-gray-800{% endif %}">
+          Archived ({{ archived_count }})
         </a>
       </div>
 
@@ -149,6 +163,7 @@
                 <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
                              {% if course.status == 'published' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
                              {% elif course.status == 'draft' %}bg-amber-500/10 text-amber-400 border border-amber-500/20
+                             {% elif course.status == 'archived' %}bg-purple-500/10 text-purple-400 border border-purple-500/20
                              {% else %}bg-gray-800 text-gray-400 border border-gray-700{% endif %}">
                   {{ course.status }}
                 </span>
@@ -180,18 +195,35 @@
                     </button>
                   </form>
 
-                  <!-- Delete Form -->
+                  {% if course.status == 'archived' %}
+                  <!-- Permanent Force Purge Form for Archived courses -->
                   <form method="post" action="{% url 'admin_panel:course_delete' course.id %}" class="inline"
-                        onsubmit="return confirm('Are you sure you want to permanently delete \'{{ course.title }}\'? This cannot be undone.');">
+                        onsubmit="return confirm('⚠️ DANGER: Permanently purge \'{{ course.title }}\'? This will permanently delete the course and all associated enrollments. This CANNOT be undone!');">
+                    {% csrf_token %}
+                    <input type="hidden" name="force_delete" value="true">
+                    <button type="submit"
+                            class="px-2.5 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/20 bg-red-500/10 border border-red-500/20 rounded-lg transition-colors inline-flex items-center gap-1 font-semibold"
+                            title="Permanently Purge Course">
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Purge</span>
+                    </button>
+                  </form>
+                  {% else %}
+                  <!-- Safe Delete / Archive Form -->
+                  <form method="post" action="{% url 'admin_panel:course_delete' course.id %}" class="inline"
+                        onsubmit="return confirm('{% if course.student_count > 0 %}This course has {{ course.student_count }} enrolled learner(s). Deleting it will safely move it to Archived status to preserve student learning records. Continue?{% else %}Are you sure you want to permanently delete \'{{ course.title }}\'? This cannot be undone.{% endif %}');">
                     {% csrf_token %}
                     <button type="submit"
                             class="px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                            title="Delete Course">
+                            title="{% if course.student_count > 0 %}Archive Course (Learners Enrolled){% else %}Delete Course{% endif %}">
                       <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
                   </form>
+                  {% endif %}
                 </div>
               </td>
             </tr>

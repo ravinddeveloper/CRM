@@ -323,6 +323,19 @@ PLATFORM_NAME = config("PLATFORM_NAME", default="LearnPro")
 PLATFORM_URL = config("PLATFORM_URL", default="http://localhost:8000")
 SUPPORT_EMAIL = config("SUPPORT_EMAIL", default="support@lms.local")
 
+# Deployment-level palette defaults. Platform Settings in Django Admin take
+# precedence once configured; these values seed a new installation/admin record.
+_PORTAL_COLOR_DEFAULTS = {
+    "PRIMARY": "#4f46e5", "ACCENT": "#7c3aed", "BACKGROUND": "#030712",
+    "SURFACE": "#111827", "RAISED_SURFACE": "#1f2937", "TEXT": "#f9fafb",
+    "MUTED_TEXT": "#9ca3af", "BORDER": "#374151", "INVERSE_TEXT": "#ffffff",
+    "SUCCESS": "#10b981", "WARNING": "#f59e0b", "ERROR": "#ef4444", "INFO": "#3b82f6",
+    "INVOICE_BACKGROUND": "#ffffff", "INVOICE_SURFACE": "#f8fafc", "INVOICE_TEXT": "#1e293b",
+    "INVOICE_MUTED_TEXT": "#64748b", "INVOICE_BORDER": "#e2e8f0",
+}
+for _color_name, _default_color in _PORTAL_COLOR_DEFAULTS.items():
+    globals()[f"PORTAL_{_color_name}_COLOR"] = config(f"PORTAL_{_color_name}_COLOR", default=_default_color)
+
 # ---------------------------------------------------------------------------
 # Rate Limiting
 # ---------------------------------------------------------------------------

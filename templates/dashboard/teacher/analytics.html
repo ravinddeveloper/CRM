@@ -3,35 +3,239 @@
 {% block title %}Instructor Analytics — {{ PLATFORM_NAME }}{% endblock %}
 
 {% block body %}
-<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center justify-between mb-8">
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+  {% include "dashboard/teacher/_nav.html" %}
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
       <div>
+        <a href="{% url 'teacher:dashboard' %}" class="text-xs text-brand-400 hover:underline mb-1 inline-block">← Back to Overview</a>
         <h1 class="text-3xl font-extrabold text-white">Course Performance & Analytics</h1>
-        <p class="text-sm text-gray-400 mt-1">Metrics on student engagement, lecture watch times, and completion rates.</p>
+        <p class="text-sm text-gray-400 mt-1">Live metrics on student engagement, lecture watch times, and completion rates.</p>
       </div>
-      <a href="{% url 'teacher:dashboard' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-semibold text-gray-300 hover:text-white">
-        ← Dashboard
-      </a>
+      <div class="flex items-center gap-3">
+        <a href="{% url 'teacher:course_list' %}" class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs font-semibold text-gray-300 hover:text-white transition-colors">
+          My Courses
+        </a>
+        <a href="{% url 'teacher:dashboard' %}" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-brand-500/20">
+          Instructor Dashboard
+        </a>
+      </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Average Completion Rate</p>
-        <p class="text-3xl font-extrabold text-brand-400 mt-2">68.4%</p>
-        <p class="text-xs text-gray-500 mt-1">+4.2% from last month</p>
+    <!-- High-Level KPI Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+      <!-- 1. Average Completion Rate -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-brand-500/40 transition-colors">
+        <div class="flex items-center justify-between">
+          <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Avg Completion Rate</p>
+          <span class="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-400 flex items-center justify-center text-sm">📈</span>
+        </div>
+        <p class="text-3xl font-extrabold text-brand-400 mt-3">{{ avg_completion_rate|floatformat:1 }}%</p>
+        <p class="text-xs text-gray-500 mt-1">Across all active enrollments</p>
       </div>
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Total Video Watch Hours</p>
-        <p class="text-3xl font-extrabold text-purple-400 mt-2">1,240 hrs</p>
-        <p class="text-xs text-gray-500 mt-1">Across all published lectures</p>
+
+      <!-- 2. Total Video Watch Hours -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-purple-500/40 transition-colors">
+        <div class="flex items-center justify-between">
+          <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Watch Time</p>
+          <span class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm">⏱️</span>
+        </div>
+        <p class="text-3xl font-extrabold text-purple-400 mt-3">{{ total_watch_hours }} <span class="text-lg font-semibold text-purple-300">hrs</span></p>
+        <p class="text-xs text-gray-500 mt-1">Total student learning time</p>
       </div>
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Certificates Issued</p>
-        <p class="text-3xl font-extrabold text-emerald-400 mt-2">84</p>
+
+      <!-- 3. Certificates Issued -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
+        <div class="flex items-center justify-between">
+          <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Certificates Issued</p>
+          <span class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm">🎓</span>
+        </div>
+        <p class="text-3xl font-extrabold text-emerald-400 mt-3">{{ certificates_issued }}</p>
         <p class="text-xs text-gray-500 mt-1">Full 100% course completions</p>
       </div>
+
+      <!-- 4. Active Students Enrolled -->
+      <div class="bg-gray-900/90 border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-blue-500/40 transition-colors">
+        <div class="flex items-center justify-between">
+          <p class="text-xs uppercase font-bold text-gray-400 tracking-wider">Active Students</p>
+          <span class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm">👥</span>
+        </div>
+        <p class="text-3xl font-extrabold text-blue-400 mt-3">{{ total_students_enrolled }}</p>
+        <p class="text-xs text-gray-500 mt-1">Unique enrolled learners</p>
+      </div>
     </div>
+
+    <!-- Course Performance Breakdown -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl mb-10">
+      <div class="p-6 border-b border-gray-800 flex items-center justify-between bg-gray-900/80">
+        <div>
+          <h2 class="text-lg font-bold text-white">Course Performance Breakdown</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Per-course completion metrics and engagement statistics.</p>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-800 text-gray-300">
+          {{ courses_count }} Total Courses
+        </span>
+      </div>
+
+      {% if course_stats %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-gray-300">
+          <thead class="bg-gray-950/60 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-800">
+            <tr>
+              <th class="px-6 py-3.5">Course</th>
+              <th class="px-6 py-3.5">Lectures</th>
+              <th class="px-6 py-3.5">Enrolled</th>
+              <th class="px-6 py-3.5">Avg Progress</th>
+              <th class="px-6 py-3.5">Watch Time</th>
+              <th class="px-6 py-3.5">Completions</th>
+              <th class="px-6 py-3.5 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800/60">
+            {% for item in course_stats %}
+            <tr class="hover:bg-gray-800/40 transition-colors">
+              <td class="px-6 py-4">
+                <div class="font-semibold text-white">{{ item.course.title }}</div>
+                <div class="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                  {% if item.course.category %}
+                  <span class="text-brand-400">{{ item.course.category.name }}</span>
+                  <span>•</span>
+                  {% endif %}
+                  {% if item.course.is_published %}
+                  <span class="text-emerald-400 font-medium">Published</span>
+                  {% else %}
+                  <span class="text-amber-400 font-medium">Draft</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="px-6 py-4 text-xs font-mono text-gray-400">
+                {{ item.total_lectures }}
+              </td>
+              <td class="px-6 py-4 font-semibold text-white">
+                {{ item.enrolled_count }}
+              </td>
+              <td class="px-6 py-4 min-w-[160px]">
+                <div class="flex items-center gap-3">
+                  <div class="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-brand-500 to-emerald-500 rounded-full"
+                         style="width: {{ item.avg_completion }}%;"></div>
+                  </div>
+                  <span class="text-xs font-bold text-gray-200">{{ item.avg_completion|floatformat:1 }}%</span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-xs text-gray-300 font-medium">
+                {{ item.watch_hours }} hrs
+              </td>
+              <td class="px-6 py-4">
+                <span class="px-2.5 py-1 rounded-lg text-xs font-bold {% if item.completed_count > 0 %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20{% else %}bg-gray-800 text-gray-400{% endif %}">
+                  {{ item.completed_count }} certified
+                </span>
+              </td>
+              <td class="px-6 py-4 text-right">
+                <a href="{% url 'teacher:sections' course_id=item.course.id %}"
+                   class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-brand-400 rounded-lg text-xs font-semibold transition-colors">
+                  Curriculum →
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="p-12 text-center text-gray-500">
+        <p class="text-sm">No course performance data available yet.</p>
+        <a href="{% url 'teacher:course_create' %}" class="mt-4 inline-block px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold">
+          Create Your First Course
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Recent Student Learning Activity -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
+      <div class="p-6 border-b border-gray-800 flex items-center justify-between bg-gray-900/80">
+        <div>
+          <h2 class="text-lg font-bold text-white">Recent Student Progress</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Real-time learning activity across your courses.</p>
+        </div>
+      </div>
+
+      {% if recent_activity %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-gray-300">
+          <thead class="bg-gray-950/60 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-800">
+            <tr>
+              <th class="px-6 py-3.5">Student</th>
+              <th class="px-6 py-3.5">Course</th>
+              <th class="px-6 py-3.5">Last Lecture</th>
+              <th class="px-6 py-3.5">Progress</th>
+              <th class="px-6 py-3.5">Status</th>
+              <th class="px-6 py-3.5 text-right">Last Active</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-800/60">
+            {% for prog in recent_activity %}
+            <tr class="hover:bg-gray-800/40 transition-colors">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-gradient-to-br from-brand-600 to-purple-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                    {{ prog.enrollment.user.first_name|default:prog.enrollment.user.email|first|upper }}
+                  </div>
+                  <div>
+                    <div class="font-semibold text-white text-xs">
+                      {{ prog.enrollment.user.first_name|default:"" }} {{ prog.enrollment.user.last_name|default:"" }}
+                    </div>
+                    <div class="text-[11px] text-gray-500 font-mono">{{ prog.enrollment.user.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-xs font-medium text-gray-200">
+                {{ prog.enrollment.course.title }}
+              </td>
+              <td class="px-6 py-4 text-xs text-gray-400">
+                {{ prog.last_accessed_lecture.title|default:"Introductory content" }}
+              </td>
+              <td class="px-6 py-4 min-w-[140px]">
+                <div class="flex items-center gap-2.5">
+                  <div class="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-brand-500 to-emerald-500 rounded-full"
+                         style="width: {{ prog.completion_percentage }}%;"></div>
+                  </div>
+                  <span class="text-xs font-bold text-gray-200">{{ prog.completion_percentage|floatformat:0 }}%</span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                {% if prog.is_completed %}
+                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Completed ✓
+                </span>
+                {% elif prog.completion_percentage > 0 %}
+                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-brand-500/10 text-brand-400 border border-brand-500/20">
+                  In Progress
+                </span>
+                {% else %}
+                <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-gray-800 text-gray-400">
+                  Not Started
+                </span>
+                {% endif %}
+              </td>
+              <td class="px-6 py-4 text-right text-xs text-gray-500">
+                {{ prog.last_activity_at|timesince }} ago
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="p-10 text-center text-xs text-gray-500">
+        No student activity recorded yet. As enrolled students begin watching lectures, their progress will appear here.
+      </div>
+      {% endif %}
+    </div>
+
   </div>
 </div>
 {% endblock %}

@@ -56,6 +56,8 @@ Browser geolocation is device-reported and can be spoofed. The server validates 
 
 `PlatformSettings` is a singleton editable in Django Admin under **Common → Platform settings**. The shared context processor supplies its public branding and validated color palette to website templates. The palette centralizes primary/accent, page and surface, text and border, semantic status, and invoice colors; shared CSS maps the existing utility classes to the configured values. Email templates and both invoice renderers read the same settings record. Environment values in `config/settings/base.py` provide defaults before the record is configured.
 
+`PORTAL_*_COLOR` environment variables seed the palette when the singleton does not yet exist and prefill the admin add form. A saved `PlatformSettings` record takes precedence at runtime, so routine brand changes do not require redeployment and deployments can initialize a tenant consistently.
+
 ## Data ownership
 
 Each domain app owns its schema and migrations. Cross-domain operations should call the owning app's service rather than duplicate rules in templates or unrelated views. `apps.common` contains only shared concerns; it should not become a catch-all for course, payment, or enrollment business logic.

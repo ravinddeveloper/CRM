@@ -106,6 +106,19 @@ class ProgressService:
         Triggered when a student completes 100% of a course.
         Fires certificate generation asynchronously.
         """
+        try:
+            from apps.certificates.models import Certificate
+            Certificate.objects.get_or_create(
+                enrollment=course_progress.enrollment,
+                defaults={
+                    "user": user,
+                    "course": course_progress.enrollment.course,
+                    "completed_at": course_progress.completed_at or timezone.now(),
+                },
+            )
+        except Exception as exc:
+            logger.error("Certificate creation error: %s", exc)
+
         from apps.certificates.tasks import generate_certificate_task
         try:
             generate_certificate_task.delay(str(course_progress.enrollment_id))

@@ -59,9 +59,12 @@ def student_dashboard_view(request):
         .order_by("-created_at")[:10]
     )
 
+    in_progress = [item for item in enrollment_list if 0 < item["completion_percentage"] < 100]
+
     context = {
         "enrollments": enrollments,
         "courses": enrollment_list,
+        "in_progress": in_progress,
         "student_notes": student_notes,
         "stats": {
             "total_courses": total_courses,

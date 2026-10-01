@@ -3,8 +3,9 @@
 {% block title %}Add Lecture Note — {{ lecture.title }}{% endblock %}
 
 {% block body %}
-<div class="min-h-screen bg-gray-950 text-gray-100 py-10" x-data="{ uploadType: 'file' }">
-  <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16" x-data="{ uploadType: 'file' }">
+  {% include "dashboard/teacher/_nav.html" %}
+  <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
       <div class="flex items-center justify-between mb-4">
         <div>

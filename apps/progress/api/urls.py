@@ -6,6 +6,12 @@ from . import views
 app_name = "progress_api"
 
 urlpatterns = [
+    # Periodic heartbeat tracking (called every 15s by video player)
+    path(
+        "heartbeat/",
+        views.heartbeat_view,
+        name="heartbeat",
+    ),
     # Video progress - called by player every N seconds
     path(
         "lectures/<uuid:lecture_id>/position/",

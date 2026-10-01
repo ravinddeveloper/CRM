@@ -20,18 +20,39 @@
 
         <div class="flex items-center gap-3">
           <a href="{% url 'marketplace:course_list' %}"
-             class="px-3 py-1.5 text-sm text-gray-300 hover:text-white transition-colors">
-            ← Back to Courses
+             class="px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-300 hover:text-white transition-colors flex items-center gap-1">
+            <span>←</span>
+            <span class="hidden sm:inline">Back to Courses</span>
+            <span class="sm:hidden">Courses</span>
           </a>
           {% if request.user.is_authenticated %}
-            <a href="{% url 'accounts:student_dashboard' %}"
-               class="px-4 py-2 text-sm font-semibold bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-all">
-              Dashboard
+            {% if request.user.is_admin %}
+            <a href="{% url 'admin_panel:dashboard' %}"
+               class="hidden sm:inline-flex px-3.5 py-2 text-xs font-semibold bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl transition-all">
+              Admin Console
             </a>
+            {% elif request.user.is_teacher %}
+            <a href="{% url 'teacher:dashboard' %}"
+               class="hidden sm:inline-flex px-3.5 py-2 text-xs font-semibold bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 rounded-xl transition-all">
+              Instructor Dashboard
+            </a>
+            {% else %}
+            <a href="{% url 'accounts:student_dashboard' %}"
+               class="hidden sm:inline-flex px-3.5 py-2 text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition-all">
+              My Dashboard
+            </a>
+            {% endif %}
+
+            <!-- Profile Option Dropdown -->
+            {% include "base/_profile_dropdown.html" %}
           {% else %}
             <a href="{% url 'accounts:login' %}"
                class="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">
               Sign In
+            </a>
+            <a href="{% url 'accounts:register' %}"
+               class="px-4 py-2 text-sm font-bold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-brand-500/25 transition-all">
+              Get Started
             </a>
           {% endif %}
         </div>
@@ -43,6 +64,17 @@
   <div class="bg-gray-900 border-b border-gray-800 py-12 lg:py-16">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="max-w-3xl">
+        <!-- Mentor / Admin Notice Banner -->
+        {% if is_course_mentor %}
+        <div class="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-brand-500/10 border border-brand-500/30 text-brand-300 text-xs font-semibold">
+          <span>🎓</span> You are the Course Mentor. Instructor actions and management are active.
+        </div>
+        {% elif is_admin %}
+        <div class="mb-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-semibold">
+          <span>🛡️</span> Admin Mode • Course Mentor: <strong class="text-white">{{ course.teacher.full_name|default:course.teacher.email }}</strong>
+        </div>
+        {% endif %}
+
         {% if course.category %}
         <span class="inline-block px-3 py-1 bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-semibold rounded-full mb-4">
           {{ course.category.name }}
@@ -61,7 +93,7 @@
             <div class="w-6 h-6 rounded-full bg-brand-600 flex items-center justify-center text-white text-[10px] font-bold">
               {{ course.teacher.first_name|first|default:course.teacher.email|first|upper }}
             </div>
-            <span>Created by <strong class="text-white">{{ course.teacher.full_name|default:course.teacher.email }}</strong></span>
+            <span>Course Mentor: <strong class="text-white">{{ course.teacher.full_name|default:course.teacher.email }}</strong></span>
           </div>
           <span>•</span>
           <span class="capitalize">Level: <strong class="text-white">{{ course.difficulty }}</strong></span>
@@ -104,9 +136,20 @@
         <section>
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl font-bold text-white">Course Curriculum</h2>
-            <span class="text-sm text-gray-400">
-              {{ sections|length }} sections • {{ course.sections.count }} lectures
-            </span>
+            <div class="flex items-center gap-3">
+              <span class="text-sm text-gray-400">
+                {{ sections|length }} sections • {{ course.total_lectures_count }} lectures
+              </span>
+              {% if is_course_mentor %}
+              <a href="{% url 'teacher:sections' course_id=course.id %}" class="text-xs text-brand-400 hover:underline font-semibold">
+                Edit Curriculum →
+              </a>
+              {% elif is_admin %}
+              <a href="{% url 'admin_panel:course_curriculum' course.id %}" class="text-xs text-purple-400 hover:underline font-semibold">
+                Admin Curriculum →
+              </a>
+              {% endif %}
+            </div>
           </div>
 
           <div class="space-y-4" x-data="{ activeSection: 0 }">
@@ -146,7 +189,13 @@
                       Free Preview
                     </span>
                     {% endif %}
+                    {% if is_course_mentor or is_admin or is_enrolled %}
+                    <a href="{% url 'learn:lecture' course.slug lecture.id %}" class="text-xs text-brand-400 hover:underline">
+                      Watch Lecture →
+                    </a>
+                    {% else %}
                     <span class="text-xs text-gray-500">{{ lecture.duration_seconds|default:300|divisibleby:60 }} mins</span>
+                    {% endif %}
                   </div>
                 </div>
                 {% empty %}
@@ -187,14 +236,14 @@
 
         <!-- Instructor Bio -->
         <section class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 sm:p-8">
-          <h2 class="text-xl font-bold text-white mb-4">About the Instructor</h2>
+          <h2 class="text-xl font-bold text-white mb-4">About the Course Mentor</h2>
           <div class="flex items-start gap-4">
             <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-lg flex-shrink-0">
               {{ course.teacher.first_name|first|default:course.teacher.email|first|upper }}
             </div>
             <div>
               <h3 class="text-base font-bold text-white">{{ course.teacher.full_name|default:course.teacher.email }}</h3>
-              <p class="text-xs text-brand-400 font-medium">Instructor</p>
+              <p class="text-xs text-brand-400 font-medium">Course Mentor & Instructor</p>
               <p class="text-sm text-gray-400 mt-2 leading-relaxed">
                 {{ course.teacher.profile.bio|default:"Dedicated online educator specializing in practical, real-world skill building." }}
               </p>
@@ -204,7 +253,7 @@
 
       </div>
 
-      <!-- Right Column: Sticky Purchase Card (1 col) -->
+      <!-- Right Column: Sticky Action Card (1 col) -->
       <aside class="lg:col-span-1">
         <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 sticky top-24 shadow-2xl shadow-black/60">
           <!-- Thumbnail preview -->
@@ -216,19 +265,178 @@
               <span class="text-4xl">🎬</span>
             </div>
             {% endif %}
+
+            {% if is_course_mentor %}
+            <div class="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-brand-600 text-white shadow-md">
+              Mentor Mode
+            </div>
+            {% elif is_admin %}
+            <div class="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider bg-purple-600 text-white shadow-md">
+              Admin Mode
+            </div>
+            {% endif %}
           </div>
 
-          <!-- Price -->
+          <!-- Role-based Action Panel -->
           <div class="mb-6">
-            {% if is_enrolled %}
-              <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center mb-4">
-                <span class="text-sm font-semibold text-emerald-400">✓ You are enrolled in this course</span>
+            {% if is_course_mentor %}
+              <!-- ── 1. COURSE MENTOR / INSTRUCTOR CONTROLS ── -->
+              <div class="p-4 rounded-xl bg-brand-500/10 border border-brand-500/20 mb-4">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-bold uppercase tracking-wider text-brand-400">Course Mentor</span>
+                  {% if course.is_published %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Live</span>
+                  {% else %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">Draft</span>
+                  {% endif %}
+                </div>
+                <p class="text-xs text-gray-300">You are the instructor and mentor of this course. Full management actions are enabled.</p>
               </div>
-              <a href="{% url 'accounts:student_dashboard' %}"
-                 class="block w-full text-center py-3.5 px-6 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition-all">
-                Go to Learning Dashboard
-              </a>
+
+              <div class="space-y-2.5">
+                <!-- Manage Curriculum & Lectures -->
+                <a href="{% url 'teacher:sections' course_id=course.id %}"
+                   class="w-full py-3 px-4 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 transition-all text-center flex items-center justify-center gap-2 text-sm">
+                  <span>📑</span> Manage Curriculum & Videos
+                </a>
+
+                <!-- Edit Course Settings -->
+                <a href="{% url 'teacher:course_edit' course_id=course.id %}"
+                   class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold rounded-xl border border-gray-700 transition-all text-center flex items-center justify-center gap-2 text-xs">
+                  <span>⚙️</span> Edit Course Settings
+                </a>
+
+                <!-- Preview Classroom -->
+                <a href="{% url 'learn:course' course_slug=course.slug %}"
+                   class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-brand-300 font-semibold rounded-xl border border-brand-500/20 transition-all text-center flex items-center justify-center gap-2 text-xs">
+                  <span>▶️</span> Preview Course as Student
+                </a>
+
+                <!-- Course Analytics -->
+                <a href="{% url 'teacher:analytics' %}"
+                   class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-purple-300 font-semibold rounded-xl border border-purple-500/20 transition-all text-center flex items-center justify-center gap-2 text-xs">
+                  <span>📊</span> Course Performance & Analytics
+                </a>
+
+                <!-- Enrolled Students -->
+                <a href="{% url 'teacher:course_students' course_id=course.id %}"
+                   class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold rounded-xl border border-gray-700 transition-all text-center flex items-center justify-center gap-2 text-xs">
+                  <span>👥</span> View Enrolled Students
+                </a>
+
+                <!-- Publish / Unpublish Toggle -->
+                <form method="post" action="{% url 'teacher:course_toggle_publish' course_id=course.id %}" class="pt-1">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="w-full py-2 px-3 text-xs font-semibold rounded-xl transition-all border {% if course.is_published %}bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20{% else %}bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20{% endif %}">
+                    {% if course.is_published %}Move to Draft (Unpublish){% else %}✓ Publish Course Live{% endif %}
+                  </button>
+                </form>
+              </div>
+
+            {% elif is_admin %}
+              <!-- ── 2. ADMINISTRATOR CONTROLS ── -->
+              <div class="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 mb-4">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xs font-bold uppercase tracking-wider text-purple-400">Admin Console</span>
+                  {% if course.is_published %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Live</span>
+                  {% else %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">Draft</span>
+                  {% endif %}
+                </div>
+                <p class="text-xs text-gray-300">
+                  Assigned Mentor: <strong class="text-white">{{ course.teacher.full_name|default:course.teacher.email }}</strong>
+                </p>
+                <p class="text-[11px] text-gray-400 mt-1">Full administrative actions are enabled.</p>
+              </div>
+
+              <div class="space-y-2.5">
+                <!-- Admin Curriculum -->
+                <a href="{% url 'admin_panel:course_curriculum' course.id %}"
+                   class="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-purple-500/20 transition-all text-center flex items-center justify-center gap-2 text-sm">
+                  <span>🛠️</span> Manage Curriculum
+                </a>
+
+                <!-- Edit Course Settings -->
+                <a href="{% url 'admin_panel:course_edit' course.id %}"
+                   class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold rounded-xl border border-gray-700 transition-all text-center flex items-center justify-center gap-2 text-xs">
+                  <span>⚙️</span> Edit Course Settings
+                </a>
+
+                <!-- Open Course Classroom -->
+                <a href="{% url 'learn:course' course_slug=course.slug %}"
+                   class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-purple-300 font-semibold rounded-xl border border-purple-500/20 transition-all text-center flex items-center justify-center gap-2 text-xs">
+                  <span>▶️</span> Open Classroom (Admin View)
+                </a>
+
+                <!-- Toggle Publish -->
+                <form method="post" action="{% url 'admin_panel:course_toggle_publish' course.id %}" class="pt-1">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="w-full py-2 px-3 text-xs font-semibold rounded-xl transition-all border {% if course.is_published %}bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/20{% else %}bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20{% endif %}">
+                    {% if course.is_published %}Unpublish Course{% else %}✓ Publish Course Live{% endif %}
+                  </button>
+                </form>
+              </div>
+
+            {% elif is_other_teacher %}
+              <!-- ── 3. FACULTY / INSTRUCTOR ACCESS (OTHER TEACHER) ── -->
+              <div class="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 mb-4">
+                <span class="text-xs font-bold uppercase tracking-wider text-blue-400 block mb-1">Faculty Access</span>
+                <p class="text-xs text-gray-300">
+                  Course Mentor: <strong class="text-white">{{ course.teacher.full_name|default:course.teacher.email }}</strong>
+                </p>
+                <p class="text-[11px] text-gray-400 mt-1">You are logged in as an instructor.</p>
+              </div>
+
+              <div class="space-y-2.5">
+                <a href="{% url 'learn:course' course_slug=course.slug %}"
+                   class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all text-center flex items-center justify-center gap-2 text-sm">
+                  <span>▶️</span> Preview Course Lectures
+                </a>
+                <a href="{% url 'teacher:dashboard' %}"
+                   class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold rounded-xl border border-gray-700 transition-all text-center block text-xs">
+                  ← Back to My Teaching Dashboard
+                </a>
+              </div>
+
+            {% elif is_enrolled %}
+              <!-- ── 4. ENROLLED LEARNER ── -->
+              <div class="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 mb-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Enrolled Learner</span>
+                </div>
+                {% if course_progress %}
+                <div class="space-y-1.5">
+                  <div class="flex justify-between text-xs text-gray-300 font-medium">
+                    <span>Your Progress</span>
+                    <span class="font-bold text-emerald-400">{{ course_progress.completion_percentage|floatformat:0 }}%</span>
+                  </div>
+                  <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-brand-500 to-emerald-500 rounded-full"
+                         style="width: {{ course_progress.completion_percentage }}%;"></div>
+                  </div>
+                </div>
+                {% else %}
+                <p class="text-xs text-gray-300">You have active lifetime access to this course.</p>
+                {% endif %}
+              </div>
+
+              <div class="space-y-2.5">
+                <a href="{% url 'learn:course' course_slug=course.slug %}"
+                   class="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition-all text-center block">
+                  {% if course_progress and course_progress.completion_percentage > 0 %}Resume Learning →{% else %}Start Course →{% endif %}
+                </a>
+                <a href="{% url 'accounts:student_dashboard' %}"
+                   class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold rounded-xl border border-gray-700 transition-all text-center block text-xs">
+                  My Learning Dashboard
+                </a>
+              </div>
+
             {% else %}
+              <!-- ── 5. PUBLIC VISITOR / UNENROLLED STUDENT ── -->
               <div class="flex items-baseline gap-2 mb-2">
                 {% if course.is_free %}
                 <span class="text-3xl font-extrabold text-white">Free</span>

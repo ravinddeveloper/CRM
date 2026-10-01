@@ -34,6 +34,16 @@ def checkout_view(request):
 
     course = get_object_or_404(Course, id=course_id, status="published")
 
+    # Check if user is the course mentor
+    if request.user.is_teacher and course.teacher_id == request.user.id:
+        messages.info(request, f"You are the instructor/mentor of '{course.title}'.")
+        return redirect("teacher:sections", course_id=course.id)
+
+    # Check if user is an administrator
+    if request.user.is_admin or request.user.is_staff:
+        messages.info(request, f"You have administrator access to '{course.title}'.")
+        return redirect("admin_panel:course_curriculum", course_id=course.id)
+
     # Check if user is already enrolled
     if Enrollment.objects.filter(user=request.user, course=course, status="active").exists():
         messages.info(request, f"You are already enrolled in '{course.title}'.")

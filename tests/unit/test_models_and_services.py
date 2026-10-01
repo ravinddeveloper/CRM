@@ -414,3 +414,101 @@ class TestStorageService(TestCase):
         """Ensure apps.storage.azure module exists and defines AzureBlobStorageService."""
         from apps.storage.azure import AzureBlobStorageService
         self.assertTrue(issubclass(AzureBlobStorageService, object))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Staff Shift & Work Hours Tests
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestStaffShiftWorkHoursCalculation(TestCase):
+
+    def setUp(self):
+        from tests.factories import make_teacher
+        self.employee = make_teacher()
+
+    def test_shift_duration_properties_completed_shift(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from apps.scheduling.models import StaffShift
+
+        now = timezone.now()
+        shift = StaffShift.objects.create(
+            employee=self.employee,
+            checked_in_at=now - timedelta(hours=2, minutes=30),
+            checked_out_at=now,
+        )
+        self.assertFalse(shift.is_open)
+        self.assertEqual(shift.duration_seconds, 2 * 3600 + 30 * 60)
+        self.assertEqual(shift.duration_hours, 2.5)
+        self.assertEqual(shift.formatted_duration, "2h 30m")
+
+    def test_shift_duration_short_shift(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from apps.scheduling.models import StaffShift
+
+        now = timezone.now()
+        shift = StaffShift.objects.create(
+            employee=self.employee,
+            checked_in_at=now - timedelta(seconds=45),
+            checked_out_at=now,
+        )
+        self.assertEqual(shift.duration_seconds, 45)
+        self.assertEqual(shift.formatted_duration, "45s")
+
+    def test_shift_statistics_today_and_total(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from apps.scheduling.models import StaffShift
+        from apps.scheduling.services import get_shift_statistics
+
+        now = timezone.now()
+
+        # Shift 1: 3 hours ago today (duration 2 hours)
+        StaffShift.objects.create(
+            employee=self.employee,
+            checked_in_at=now - timedelta(hours=3),
+            checked_out_at=now - timedelta(hours=1),
+        )
+
+        # Shift 2: 3 days ago (duration 4 hours)
+        past_employee = self.employee
+        StaffShift.objects.create(
+            employee=past_employee,
+            checked_in_at=now - timedelta(days=3, hours=5),
+            checked_out_at=now - timedelta(days=3, hours=1),
+        )
+
+        stats = get_shift_statistics()
+        # Today: 2 hours (7200s)
+        self.assertEqual(stats["today_hours"], 2.0)
+        self.assertEqual(stats["formatted_today_hours"], "2h 00m")
+        self.assertEqual(stats["today_shifts_count"], 1)
+
+        # Total: 2h + 4h = 6 hours (21600s)
+        self.assertEqual(stats["total_hours"], 6.0)
+        self.assertEqual(stats["formatted_total_hours"], "6h 00m")
+        self.assertEqual(stats["total_shifts_count"], 2)
+
+    def test_admin_scheduling_view_includes_work_hours(self):
+        from datetime import timedelta
+        from django.urls import reverse
+        from django.utils import timezone
+        from apps.scheduling.models import StaffShift
+        from tests.factories import make_admin
+
+        admin_user = make_admin()
+        now = timezone.now()
+        StaffShift.objects.create(
+            employee=self.employee,
+            checked_in_at=now - timedelta(hours=1, minutes=45),
+            checked_out_at=now,
+        )
+
+        self.client.force_login(admin_user)
+        res = self.client.get(reverse("admin_panel:schedule_attendance"))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Today's Work Hours")
+        self.assertContains(res, "Total Work Hours")
+        self.assertContains(res, "Work hours")
+        self.assertContains(res, "1h 45m")

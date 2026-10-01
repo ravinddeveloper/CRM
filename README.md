@@ -64,6 +64,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the repository-specific app map, requ
 
 After creating a Django superuser and applying migrations, open `/django-admin/` and choose **Common → Platform settings**. Configure the public name, tagline, logo, favicon, portal color palette, support contact, legal business name, billing address, tax registration number, and invoice footer. Portal colors include primary and accent colors, page/surface/text/border colors, semantic status colors, and a separate invoice palette. They apply throughout shared website templates and dashboards, account pages, payment checkout, notification emails, and newly generated invoices. Existing invoices remain historical documents.
 
+For deployment-level setup, `PORTAL_*_COLOR` variables in `.env` provide palette defaults before Platform Settings is first saved. After that, the admin record is the runtime source of truth; changing `.env` does not overwrite saved admin choices. This keeps production secrets/configuration separate from normal business branding changes while still supporting automated deployments and fresh installs.
+
 The logo and favicon are stored using Django's configured media storage. The production Nginx configuration serves only `/media/branding/` publicly; keep the general media directory private and use the protected storage flow for course content.
 
 ### Classes, memberships, and attendance

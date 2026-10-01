@@ -3,8 +3,9 @@
 {% block title %}Enrolled Students — {{ course.title }}{% endblock %}
 
 {% block body %}
-<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+  {% include "dashboard/teacher/_nav.html" %}
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex items-center justify-between mb-8">
       <div>
         <a href="{% url 'teacher:course_list' %}" class="text-xs text-brand-400 hover:underline mb-1 inline-block">← Courses</a>

@@ -186,6 +186,11 @@ class Course(BaseModel):
     def get_total_lectures(self):
         return sum(section.lectures.filter(is_published=True).count() for section in self.sections.all())
 
+    @property
+    def total_lectures_count(self):
+        from apps.lectures.models import Lecture
+        return Lecture.objects.filter(section__course=self, is_published=True).count()
+
     def get_absolute_url(self):
         from django.urls import reverse
         return reverse("marketplace:course_detail", kwargs={"slug": self.slug})

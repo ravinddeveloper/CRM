@@ -13,6 +13,7 @@ from apps.accounts.admin_views import admin_required
 
 from .forms import SessionManagementForm
 from .models import BookingStatus, Session, SessionBooking, SessionStatus, StaffShift
+from .services import get_shift_statistics
 
 
 @admin_required
@@ -23,6 +24,8 @@ def schedule_attendance_view(request):
         session__starts_at__gte=now - timedelta(days=7),
     ).order_by("-booked_at")[:50]
     shifts = StaffShift.objects.select_related("employee").order_by("-checked_in_at")[:50]
+    shift_stats = get_shift_statistics()
+
     context = {
         "active_tab": "schedule_attendance",
         "sessions": sessions,
@@ -34,7 +37,12 @@ def schedule_attendance_view(request):
             session__status=SessionStatus.SCHEDULED,
             session__starts_at__gte=now,
         ).count(),
-        "open_shifts_count": StaffShift.objects.filter(checked_out_at__isnull=True).count(),
+        "open_shifts_count": shift_stats["open_shifts_count"],
+        "today_work_hours": shift_stats["formatted_today_hours"],
+        "today_work_hours_decimal": shift_stats["today_hours"],
+        "total_work_hours": shift_stats["formatted_total_hours"],
+        "total_work_hours_decimal": shift_stats["total_hours"],
+        "shift_stats": shift_stats,
     }
     return render(request, "dashboard/admin/scheduling.html", context)
 

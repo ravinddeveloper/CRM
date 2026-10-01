@@ -31,6 +31,13 @@ urlpatterns = [
     path("courses/lectures/<uuid:lecture_id>/materials/upload/", admin_views.study_material_upload_view, name="study_material_upload"),
     path("courses/materials/<str:material_type>/<uuid:material_id>/delete/", admin_views.study_material_delete_view, name="study_material_delete"),
 
+    # Course Category Management
+    path("categories/", admin_views.category_list_view, name="category_list"),
+    path("categories/create/", admin_views.category_create_view, name="category_create"),
+    path("categories/<uuid:category_id>/edit/", admin_views.category_edit_view, name="category_edit"),
+    path("categories/<uuid:category_id>/toggle/", admin_views.category_toggle_view, name="category_toggle"),
+    path("categories/<uuid:category_id>/delete/", admin_views.category_delete_view, name="category_delete"),
+
     # Transactions & Orders
     path("transactions/", admin_views.transaction_list_view, name="transaction_list"),
     path("transactions/<uuid:order_id>/", admin_views.transaction_detail_view, name="transaction_detail"),

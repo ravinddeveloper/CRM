@@ -117,10 +117,10 @@ def course_publish_view(request, course_id):
         messages.error(request, "Add at least one published section before publishing.")
         return redirect("teacher:course_edit", course_id=course_id)
     course.publish()
-    from apps.audit.models import AuditLog
-    AuditLog.log("course_published", actor=request.user, obj=course, ip=request.META.get("REMOTE_ADDR"))
+    from apps.audit.models import AuditAction, AuditLog
+    AuditLog.log(AuditAction.COURSE_PUBLISHED, actor=request.user, obj=course, ip=request.META.get("REMOTE_ADDR"))
     messages.success(request, f"'{course.title}' is now published!")
-    return redirect("teacher:course_edit", course_id=course_id)
+    return redirect(request.META.get("HTTP_REFERER") or "teacher:course_edit", course_id=course_id)
 
 
 @teacher_required
@@ -128,8 +128,30 @@ def course_publish_view(request, course_id):
 def course_unpublish_view(request, course_id):
     course = get_teacher_course(request.user, course_id)
     course.unpublish()
+    from apps.audit.models import AuditAction, AuditLog
+    AuditLog.log(AuditAction.COURSE_UNPUBLISHED, actor=request.user, obj=course, ip=request.META.get("REMOTE_ADDR"))
     messages.success(request, f"'{course.title}' has been unpublished.")
-    return redirect("teacher:course_edit", course_id=course_id)
+    return redirect(request.META.get("HTTP_REFERER") or "teacher:course_edit", course_id=course_id)
+
+
+@teacher_required
+@require_http_methods(["POST"])
+def course_toggle_publish_view(request, course_id):
+    """Toggle a course's published/draft status for teacher."""
+    course = get_teacher_course(request.user, course_id)
+    from apps.audit.models import AuditAction, AuditLog
+    if course.is_published:
+        course.unpublish()
+        AuditLog.log(AuditAction.COURSE_UNPUBLISHED, actor=request.user, obj=course, ip=request.META.get("REMOTE_ADDR"))
+        messages.info(request, f"'{course.title}' has been moved to Draft.")
+    else:
+        if not course.sections.filter(is_published=True).exists() and not course.sections.exists():
+            messages.error(request, "Add at least one section before publishing.")
+            return redirect("teacher:sections", course_id=course_id)
+        course.publish()
+        AuditLog.log(AuditAction.COURSE_PUBLISHED, actor=request.user, obj=course, ip=request.META.get("REMOTE_ADDR"))
+        messages.success(request, f"'{course.title}' is now published!")
+    return redirect(request.META.get("HTTP_REFERER") or "teacher:course_list")
 
 
 @teacher_required
@@ -151,13 +173,39 @@ def section_create_view(request, course_id):
         section.order = course.sections.count()
         section.save()
         messages.success(request, "Section created.")
-        return redirect("teacher:course_edit", course_id=course_id)
+        return redirect("teacher:sections", course_id=course_id)
     return render(request, "dashboard/teacher/section_form.html", {"form": form, "course": course})
 
 
 @teacher_required
 @require_http_methods(["GET", "POST"])
-def lecture_create_view(request, section_id):
+def section_edit_view(request, section_id, course_id=None):
+    from .forms import SectionForm
+    section = get_object_or_404(Section, id=section_id)
+    course = get_teacher_course(request.user, section.course_id)
+    form = SectionForm(data=request.POST or None, instance=section)
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        messages.success(request, "Section updated.")
+        return redirect("teacher:sections", course_id=course.id)
+    return render(request, "dashboard/teacher/section_form.html", {
+        "form": form, "course": course, "section": section, "is_edit": True
+    })
+
+
+@teacher_required
+@require_http_methods(["POST"])
+def section_delete_view(request, section_id, course_id=None):
+    section = get_object_or_404(Section, id=section_id)
+    course = get_teacher_course(request.user, section.course_id)
+    section.delete()
+    messages.success(request, "Section deleted.")
+    return redirect("teacher:sections", course_id=course.id)
+
+
+@teacher_required
+@require_http_methods(["GET", "POST"])
+def lecture_create_view(request, section_id, course_id=None):
     from apps.lectures.forms import LectureForm
     section = get_object_or_404(Section, id=section_id)
     course = get_teacher_course(request.user, section.course_id)
@@ -176,7 +224,7 @@ def lecture_create_view(request, section_id):
 
 @teacher_required
 @require_http_methods(["GET", "POST"])
-def lecture_edit_view(request, lecture_id):
+def lecture_edit_view(request, lecture_id, course_id=None):
     from apps.lectures.forms import LectureForm
     lecture = get_object_or_404(Lecture, id=lecture_id)
     course = get_teacher_course(request.user, lecture.section.course_id)
@@ -192,12 +240,12 @@ def lecture_edit_view(request, lecture_id):
 
 @teacher_required
 @require_http_methods(["GET", "POST"])
-def video_upload_view(request, lecture_id):
+def video_upload_view(request, lecture_id, course_id=None):
     lecture = get_object_or_404(Lecture, id=lecture_id)
-    get_teacher_course(request.user, lecture.section.course_id)
+    course = get_teacher_course(request.user, lecture.section.course_id)
 
     if request.method == "POST":
-        video_file = request.FILES.get("video")
+        video_file = request.FILES.get("video_file") or request.FILES.get("video")
         if not video_file:
             messages.error(request, "No video file provided.")
             return redirect("teacher:video_upload", lecture_id=lecture_id)
@@ -229,12 +277,12 @@ def video_upload_view(request, lecture_id):
         messages.success(request, "Video uploaded successfully.")
         return redirect("teacher:lecture_edit", lecture_id=lecture_id)
 
-    return render(request, "dashboard/teacher/video_upload.html", {"lecture": lecture})
+    return render(request, "dashboard/teacher/video_upload.html", {"lecture": lecture, "course": course})
 
 
 @teacher_required
 @require_http_methods(["GET", "POST"])
-def note_upload_view(request, lecture_id):
+def note_upload_view(request, lecture_id, course_id=None):
     lecture = get_object_or_404(Lecture, id=lecture_id)
     course = get_teacher_course(request.user, lecture.section.course_id)
 
@@ -348,4 +396,72 @@ def course_students_view(request, course_id):
 
 @teacher_required
 def analytics_view(request):
-    return render(request, "dashboard/teacher/analytics.html")
+    """Aggregate teacher course performance, completion rates, watch times, and recent student activity."""
+    from django.db.models import Avg, Sum
+    from apps.certificates.models import Certificate
+    from apps.progress.models import CourseProgress
+
+    teacher = request.user
+    if teacher.is_admin:
+        courses = Course.objects.all()
+    else:
+        courses = Course.objects.filter(teacher=teacher)
+
+    courses = courses.select_related("category").order_by("-created_at")
+    course_ids = list(courses.values_list("id", flat=True))
+
+    all_progress = CourseProgress.objects.filter(
+        enrollment__course_id__in=course_ids
+    ).select_related("enrollment__user", "enrollment__course", "last_accessed_lecture")
+
+    avg_completion = all_progress.aggregate(avg=Avg("completion_percentage"))["avg"]
+    avg_completion_rate = round(float(avg_completion), 1) if avg_completion is not None else 0.0
+
+    total_watch_seconds = all_progress.aggregate(tot=Sum("total_learning_time_seconds"))["tot"] or 0
+    total_watch_hours = round(total_watch_seconds / 3600, 1)
+
+    certificates_issued = Certificate.objects.filter(course_id__in=course_ids).count()
+    completed_progress_count = all_progress.filter(completion_percentage__gte=100).count()
+    total_completions = max(certificates_issued, completed_progress_count)
+
+    total_students_enrolled = (
+        Enrollment.objects.filter(course_id__in=course_ids, status="active")
+        .values("user_id")
+        .distinct()
+        .count()
+    )
+
+    # Per-course breakdown
+    course_stats = []
+    for c in courses:
+        c_progress = all_progress.filter(enrollment__course=c)
+        c_enrolled = Enrollment.objects.filter(course=c, status="active").count()
+        c_avg = c_progress.aggregate(avg=Avg("completion_percentage"))["avg"]
+        c_avg_pct = round(float(c_avg), 1) if c_avg is not None else 0.0
+        c_watch_sec = c_progress.aggregate(tot=Sum("total_learning_time_seconds"))["tot"] or 0
+        c_watch_hrs = round(c_watch_sec / 3600, 1)
+        c_certs = Certificate.objects.filter(course=c).count()
+        c_completed = max(c_certs, c_progress.filter(completion_percentage__gte=100).count())
+
+        course_stats.append({
+            "course": c,
+            "enrolled_count": c_enrolled,
+            "avg_completion": c_avg_pct,
+            "watch_hours": c_watch_hrs,
+            "completed_count": c_completed,
+            "total_lectures": c.get_total_lectures(),
+        })
+
+    # Recent student learning activity
+    recent_activity = all_progress.order_by("-last_activity_at")[:10]
+
+    context = {
+        "avg_completion_rate": avg_completion_rate,
+        "total_watch_hours": total_watch_hours,
+        "certificates_issued": total_completions,
+        "total_students_enrolled": total_students_enrolled,
+        "course_stats": course_stats,
+        "recent_activity": recent_activity,
+        "courses_count": courses.count(),
+    }
+    return render(request, "dashboard/teacher/analytics.html", context)

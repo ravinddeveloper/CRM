@@ -5,6 +5,7 @@ description = "Production-Ready Django Learning Management & Paid Course Platfor
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "azure-storage-blob>=12.31.0",
     "django>=5.2",
     "pyotp>=2.10.0",
     "qrcode>=8.2",

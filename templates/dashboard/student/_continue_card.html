@@ -1,0 +1,28 @@
+<!-- Student continue learning card component -->
+<div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 hover:border-brand-500/30 transition-all flex flex-col justify-between group shadow-lg">
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">
+        In Progress
+      </span>
+      <span class="text-xs font-bold text-gray-400">{{ item.completion_percentage|floatformat:0 }}%</span>
+    </div>
+    <h3 class="text-sm font-bold text-white group-hover:text-brand-400 transition-colors line-clamp-1 mb-1">
+      {{ item.course.title }}
+    </h3>
+    <p class="text-xs text-gray-400 line-clamp-1 mb-4">
+      {{ item.course.teacher.full_name|default:item.course.teacher.email }}
+    </p>
+  </div>
+
+  <div>
+    <div class="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-3">
+      <div class="h-full bg-gradient-to-r from-brand-500 to-emerald-500 rounded-full"
+           style="width: {{ item.completion_percentage }}%;"></div>
+    </div>
+    <a href="{% url 'learn:course' course_slug=item.course.slug %}"
+       class="w-full block text-center py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-brand-500/20">
+      Resume Learning →
+    </a>
+  </div>
+</div>

@@ -3,8 +3,9 @@
 {% block title %}Upload Video — {{ lecture.title }}{% endblock %}
 
 {% block body %}
-<div class="min-h-screen bg-gray-950 text-gray-100 py-10">
-  <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+  {% include "dashboard/teacher/_nav.html" %}
+  <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
       <div class="flex items-center gap-3 mb-6">
         <div class="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center text-xl">📹</div>
@@ -27,7 +28,7 @@
                  class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-600 file:text-white hover:file:bg-brand-500">
         </div>
         <div class="pt-2 flex justify-end gap-3">
-          <a href="{% url 'teacher:sections' course_id=course.id %}" class="px-4 py-2 bg-gray-800 text-gray-300 rounded-xl text-sm font-semibold">Cancel</a>
+          <a href="{% if course %}{% url 'teacher:sections' course_id=course.id %}{% elif lecture and lecture.section %}{% url 'teacher:sections' course_id=lecture.section.course_id %}{% else %}{% url 'teacher:course_list' %}{% endif %}" class="px-4 py-2 bg-gray-800 text-gray-300 rounded-xl text-sm font-semibold">Cancel</a>
           <button type="submit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/20">
             Upload to Private Storage
           </button>

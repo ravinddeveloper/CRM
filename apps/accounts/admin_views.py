@@ -6,9 +6,11 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, Sum
+from django.db import transaction
+from django.db.models import Count, ProtectedError, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_http_methods
 
 from apps.audit.models import AuditAction, AuditLog
@@ -120,6 +122,7 @@ def course_list_view(request):
         "total_count": Course.objects.count(),
         "published_count": Course.objects.filter(status=CourseStatus.PUBLISHED).count(),
         "draft_count": Course.objects.filter(status=CourseStatus.DRAFT).count(),
+        "archived_count": Course.objects.filter(status=CourseStatus.ARCHIVED).count(),
     }
     return render(request, "dashboard/admin/courses/list.html", context)
 
@@ -346,20 +349,66 @@ def course_publish_toggle_view(request, course_id):
 @admin_required
 @require_http_methods(["POST"])
 def course_delete_view(request, course_id):
-    """Delete a course from the platform."""
+    """Delete or safely archive a course from the platform."""
     course = get_object_or_404(Course, id=course_id)
     title = course.title
-    course.delete()
+    force_delete = request.POST.get("force_delete") in ["true", "1", "yes"]
 
-    AuditLog.objects.create(
-        actor=request.user,
-        action=AuditAction.COURSE_DELETED,
-        object_type="Course",
-        object_id=str(course_id),
-        object_repr=title,
-        ip_address=request.META.get("REMOTE_ADDR"),
-    )
-    messages.success(request, f"Course '{title}' has been deleted.")
+    has_enrollments = course.enrollments.exists()
+    has_orders = course.order_items.exists()
+
+    # If course has active enrollments or financial transactions and force_delete is not set,
+    # safely archive it instead of hard-deleting to prevent breaking student learning & order records.
+    if (has_enrollments or has_orders) and not force_delete:
+        course.status = CourseStatus.ARCHIVED
+        course.save(update_fields=["status"])
+
+        AuditLog.objects.create(
+            actor=request.user,
+            action=AuditAction.COURSE_UNPUBLISHED,
+            object_type="Course",
+            object_id=str(course_id),
+            object_repr=title,
+            changes={
+                "status": CourseStatus.ARCHIVED,
+                "reason": "Archived instead of hard-deleted due to existing learner enrollments/orders.",
+            },
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+        enrolled_count = course.enrollments.count()
+        messages.warning(
+            request,
+            f"Course '{title}' has {enrolled_count} enrolled learner(s) or associated purchase history. "
+            f"To preserve student learning records, it has been moved to 'Archived' status and unpublished from the marketplace. "
+            f"If you intend to completely remove all data, use the Purge action under the Archived tab.",
+        )
+        return redirect("admin_panel:course_list")
+
+    try:
+        with transaction.atomic():
+            if force_delete:
+                course.enrollments.all().delete()
+                course.order_items.all().delete()
+            course.delete()
+
+        AuditLog.objects.create(
+            actor=request.user,
+            action=AuditAction.COURSE_DELETED,
+            object_type="Course",
+            object_id=str(course_id),
+            object_repr=title,
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+        messages.success(request, f"Course '{title}' has been successfully deleted.")
+    except ProtectedError:
+        course.status = CourseStatus.ARCHIVED
+        course.save(update_fields=["status"])
+        messages.warning(
+            request,
+            f"Course '{title}' is referenced by other protected records and cannot be permanently deleted. "
+            f"It has been safely moved to 'Archived' status instead.",
+        )
+
     return redirect("admin_panel:course_list")
 
 
@@ -1098,3 +1147,268 @@ def student_report_view(request):
         "active_tab": "users",
         "students": students,
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 8. CATEGORY MANAGEMENT
+# ─────────────────────────────────────────────────────────────────────────────
+
+@admin_required
+def category_list_view(request):
+    """Admin interface to list, search, and manage course categories."""
+    q = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "")
+
+    categories = Category.objects.select_related("parent").annotate(
+        course_count=Count("courses")
+    ).order_by("order", "name")
+
+    if q:
+        categories = categories.filter(
+            Q(name__icontains=q) | Q(slug__icontains=q) | Q(description__icontains=q)
+        )
+
+    if status_filter == "active":
+        categories = categories.filter(is_active=True)
+    elif status_filter == "inactive":
+        categories = categories.filter(is_active=False)
+
+    total_categories = Category.objects.count()
+    active_categories = Category.objects.filter(is_active=True).count()
+    root_categories = Category.objects.filter(parent__isnull=True).count()
+    total_courses_categorized = Course.objects.filter(category__isnull=False).count()
+
+    context = {
+        "active_tab": "categories",
+        "categories": categories,
+        "q": q,
+        "status_filter": status_filter,
+        "total_categories": total_categories,
+        "active_categories": active_categories,
+        "root_categories": root_categories,
+        "total_courses_categorized": total_courses_categorized,
+    }
+    return render(request, "dashboard/admin/categories/list.html", context)
+
+
+@admin_required
+@require_http_methods(["GET", "POST"])
+def category_create_view(request):
+    """Admin interface to create a new category."""
+    parent_categories = Category.objects.order_by("name")
+
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        slug = request.POST.get("slug", "").strip()
+        icon = request.POST.get("icon", "").strip()
+        description = request.POST.get("description", "").strip()
+        parent_id = request.POST.get("parent_id")
+        order_raw = request.POST.get("order", "0").strip()
+        is_active = request.POST.get("is_active") == "on"
+
+        errors = []
+        if not name:
+            errors.append("Category name is required.")
+        elif Category.objects.filter(name__iexact=name).exists():
+            errors.append(f"Category with name '{name}' already exists.")
+
+        if not slug:
+            slug = slugify(name)
+        else:
+            slug = slugify(slug)
+
+        if Category.objects.filter(slug=slug).exists():
+            errors.append(f"Category with slug '{slug}' already exists.")
+
+        try:
+            order = int(order_raw) if order_raw else 0
+            if order < 0:
+                order = 0
+        except ValueError:
+            order = 0
+
+        parent = None
+        if parent_id:
+            parent = Category.objects.filter(id=parent_id).first()
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+            return render(request, "dashboard/admin/categories/form.html", {
+                "active_tab": "categories",
+                "parent_categories": parent_categories,
+                "form_data": request.POST,
+                "is_create": True,
+            })
+
+        category = Category.objects.create(
+            name=name,
+            slug=slug,
+            icon=icon or "📚",
+            description=description,
+            parent=parent,
+            order=order,
+            is_active=is_active,
+        )
+
+        if "image" in request.FILES:
+            category.image = request.FILES["image"]
+            category.save(update_fields=["image"])
+
+        AuditLog.objects.create(
+            actor=request.user,
+            action=AuditAction.SETTINGS_CHANGED,
+            object_type="Category",
+            object_id=str(category.id),
+            object_repr=category.name,
+            changes={"action": "created", "name": category.name, "slug": category.slug},
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+
+        messages.success(request, f"Category '{category.name}' created successfully.")
+        return redirect("admin_panel:category_list")
+
+    return render(request, "dashboard/admin/categories/form.html", {
+        "active_tab": "categories",
+        "parent_categories": parent_categories,
+        "is_create": True,
+    })
+
+
+@admin_required
+@require_http_methods(["GET", "POST"])
+def category_edit_view(request, category_id):
+    """Admin interface to edit an existing category."""
+    category = get_object_or_404(Category, id=category_id)
+    parent_categories = Category.objects.exclude(id=category.id).order_by("name")
+
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        slug = request.POST.get("slug", "").strip()
+        icon = request.POST.get("icon", "").strip()
+        description = request.POST.get("description", "").strip()
+        parent_id = request.POST.get("parent_id")
+        order_raw = request.POST.get("order", "0").strip()
+        is_active = request.POST.get("is_active") == "on"
+
+        errors = []
+        if not name:
+            errors.append("Category name is required.")
+        elif Category.objects.filter(name__iexact=name).exclude(id=category.id).exists():
+            errors.append(f"Another category with name '{name}' already exists.")
+
+        if not slug:
+            slug = slugify(name)
+        else:
+            slug = slugify(slug)
+
+        if Category.objects.filter(slug=slug).exclude(id=category.id).exists():
+            errors.append(f"Another category with slug '{slug}' already exists.")
+
+        try:
+            order = int(order_raw) if order_raw else 0
+            if order < 0:
+                order = 0
+        except ValueError:
+            order = 0
+
+        parent = None
+        if parent_id and parent_id != str(category.id):
+            parent = Category.objects.filter(id=parent_id).first()
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+            return render(request, "dashboard/admin/categories/form.html", {
+                "active_tab": "categories",
+                "category": category,
+                "parent_categories": parent_categories,
+                "is_create": False,
+            })
+
+        category.name = name
+        category.slug = slug
+        category.icon = icon or "📚"
+        category.description = description
+        category.parent = parent
+        category.order = order
+        category.is_active = is_active
+
+        if "image" in request.FILES:
+            category.image = request.FILES["image"]
+
+        category.save()
+
+        AuditLog.objects.create(
+            actor=request.user,
+            action=AuditAction.SETTINGS_CHANGED,
+            object_type="Category",
+            object_id=str(category.id),
+            object_repr=category.name,
+            changes={"action": "updated", "name": category.name, "slug": category.slug},
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+
+        messages.success(request, f"Category '{category.name}' updated successfully.")
+        return redirect("admin_panel:category_list")
+
+    return render(request, "dashboard/admin/categories/form.html", {
+        "active_tab": "categories",
+        "category": category,
+        "parent_categories": parent_categories,
+        "is_create": False,
+    })
+
+
+@admin_required
+@require_http_methods(["POST"])
+def category_toggle_view(request, category_id):
+    """Toggle a category's active state."""
+    category = get_object_or_404(Category, id=category_id)
+    category.is_active = not category.is_active
+    category.save(update_fields=["is_active", "updated_at"])
+
+    AuditLog.objects.create(
+        actor=request.user,
+        action=AuditAction.SETTINGS_CHANGED,
+        object_type="Category",
+        object_id=str(category.id),
+        object_repr=category.name,
+        changes={"is_active": category.is_active},
+        ip_address=request.META.get("REMOTE_ADDR"),
+    )
+
+    state = "active" if category.is_active else "inactive"
+    messages.success(request, f"Category '{category.name}' is now {state}.")
+    return redirect("admin_panel:category_list")
+
+
+@admin_required
+@require_http_methods(["POST"])
+def category_delete_view(request, category_id):
+    """Safely delete a category."""
+    category = get_object_or_404(Category, id=category_id)
+    cat_name = category.name
+    courses_count = category.courses.count()
+
+    # Detach subcategories
+    category.subcategories.update(parent=None)
+
+    # Delete category (courses.category becomes NULL due to SET_NULL)
+    category.delete()
+
+    AuditLog.objects.create(
+        actor=request.user,
+        action=AuditAction.SETTINGS_CHANGED,
+        object_type="Category",
+        object_id=str(category_id),
+        object_repr=cat_name,
+        changes={"action": "deleted", "unlinked_courses": courses_count},
+        ip_address=request.META.get("REMOTE_ADDR"),
+    )
+
+    messages.success(
+        request,
+        f"Category '{cat_name}' has been deleted." + (f" ({courses_count} course(s) unlinked)" if courses_count else "")
+    )
+    return redirect("admin_panel:category_list")

@@ -40,25 +40,65 @@ class CourseProgress(BaseModel):
         return self.completion_percentage >= Decimal("100.00")
 
     def recalculate(self):
-        """Recalculate completion from lecture progress records."""
-        total = self.lecture_progresses.count()
-        completed = self.lecture_progresses.filter(is_completed=True).count()
+        """Recalculate completion from lecture progress records against actual total course lectures."""
+        from apps.lectures.models import Lecture
+
+        course = self.enrollment.course
+        total = Lecture.objects.filter(
+            section__course=course,
+            is_published=True,
+            section__is_published=True,
+        ).count()
+        if total == 0:
+            total = Lecture.objects.filter(
+                section__course=course,
+                is_published=True,
+            ).count()
+        if total == 0:
+            total = Lecture.objects.filter(section__course=course).count()
+        if total == 0:
+            total = self.lecture_progresses.count()
+
+        completed = self.lecture_progresses.filter(
+            is_completed=True,
+            lecture__section__course=course,
+            lecture__is_published=True,
+        ).count()
+        if completed == 0:
+            completed = self.lecture_progresses.filter(is_completed=True).count()
+
         learning_time = (
             self.lecture_progresses.aggregate(
                 total=models.Sum("watched_duration_seconds")
             )["total"] or 0
         )
         self.total_lectures = total
-        self.completed_lectures = completed
+        self.completed_lectures = min(completed, total) if total > 0 else completed
         self.total_learning_time_seconds = learning_time
         if total > 0:
-            self.completion_percentage = Decimal(str(round((completed / total) * 100, 2)))
+            pct = min(100.0, (completed / total) * 100)
+            self.completion_percentage = Decimal(str(round(pct, 2)))
         else:
             self.completion_percentage = Decimal("0.00")
 
         from django.utils import timezone
-        if self.completion_percentage >= 100 and not self.completed_at:
-            self.completed_at = timezone.now()
+        if self.completion_percentage >= 100:
+            if not self.completed_at:
+                self.completed_at = timezone.now()
+            try:
+                from apps.certificates.models import Certificate
+                Certificate.objects.get_or_create(
+                    enrollment=self.enrollment,
+                    defaults={
+                        "user": self.enrollment.user,
+                        "course": course,
+                        "completed_at": self.completed_at,
+                    },
+                )
+            except Exception:
+                pass
+        elif self.completion_percentage < 100:
+            self.completed_at = None
 
         self.save(update_fields=[
             "total_lectures", "completed_lectures", "total_learning_time_seconds",
@@ -108,12 +148,13 @@ class LectureProgress(BaseModel):
             self.started_at = now
 
         self.video_position_seconds = max(self.video_position_seconds, position_seconds)
-        self.watched_duration_seconds = max(self.watched_duration_seconds, watched_seconds)
+        self.watched_duration_seconds = max(self.watched_duration_seconds, watched_seconds, position_seconds)
         self.last_watched_at = now
 
         # Calculate completion percentage
         if video_duration > 0:
-            pct = min(100.0, (watched_seconds / video_duration) * 100)
+            effective_watched = max(self.watched_duration_seconds, self.video_position_seconds)
+            pct = min(100.0, (effective_watched / video_duration) * 100)
             self.completion_percentage = Decimal(str(round(pct, 2)))
         else:
             self.completion_percentage = Decimal("100.00")

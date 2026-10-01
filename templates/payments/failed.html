@@ -3,7 +3,9 @@
 {% block title %}Payment Failed — {{ PLATFORM_NAME }}{% endblock %}
 
 {% block body %}
-<div class="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-gray-950 text-gray-100 flex flex-col">
+  {% include "base/_portal_nav.html" %}
+  <div class="flex-1 flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
   <div class="max-w-md w-full bg-gray-900 border border-gray-800 rounded-3xl p-8 sm:p-10 shadow-2xl text-center">
     
     <!-- Failure Icon -->
@@ -51,5 +53,6 @@
     </div>
 
   </div>
+</div>
 </div>
 {% endblock %}

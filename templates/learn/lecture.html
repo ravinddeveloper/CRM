@@ -42,6 +42,12 @@
           </svg>
           Curriculum
         </button>
+
+        {% if user.is_authenticated %}
+        <div class="pl-2 border-l border-gray-800 flex items-center">
+          {% include "base/_profile_dropdown.html" %}
+        </div>
+        {% endif %}
       </div>
 
     </div>
@@ -350,7 +356,7 @@
         
         <div class="p-4 sm:p-5 border-b border-gray-800 flex items-center justify-between">
           <h2 class="text-base font-bold text-white">Course Curriculum</h2>
-          <span class="text-xs text-gray-400">{{ course.lectures.count }} lectures</span>
+          <span class="text-xs text-gray-400">{{ course.total_lectures_count }} lectures</span>
         </div>
 
         <!-- Section Accordion -->
@@ -509,8 +515,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Periodic heartbeat tracking (every 15s)
   function sendHeartbeat(isEnded = false) {
-    const currentTime = Math.floor(video.currentTime);
     const duration = Math.floor(video.duration || {{ video_duration|default:0 }});
+    const currentTime = isEnded && duration > 0 ? duration : Math.floor(video.currentTime);
 
     if (duration <= 0) return;
 
@@ -537,6 +543,13 @@ document.addEventListener("DOMContentLoaded", function () {
           btn.classList.add("bg-emerald-500/10", "text-emerald-400");
           btn.innerHTML = `<span>Completed ✓</span>`;
         }
+      }
+      if (data && data.course_completion_percentage !== undefined) {
+        const bar = document.getElementById("course-progress-bar");
+        const label = document.getElementById("course-progress-label");
+        const pct = Math.round(parseFloat(data.course_completion_percentage));
+        if (bar) bar.style.width = pct + "%";
+        if (label) label.textContent = pct + "% Completed";
       }
     })
     .catch(() => {});

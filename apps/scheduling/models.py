@@ -194,5 +194,34 @@ class StaffShift(BaseModel):
     def is_open(self):
         return self.checked_out_at is None
 
+    @property
+    def duration_timedelta(self):
+        end = self.checked_out_at or timezone.now()
+        if end >= self.checked_in_at:
+            return end - self.checked_in_at
+        return timedelta(0)
+
+    @property
+    def duration_seconds(self):
+        return int(self.duration_timedelta.total_seconds())
+
+    @property
+    def duration_hours(self):
+        """Duration formatted as decimal hours (e.g., 2.5)."""
+        return round(self.duration_seconds / 3600.0, 2)
+
+    @property
+    def formatted_duration(self):
+        """Format duration into human-readable representation like '2h 15m' or '45s'."""
+        sec = self.duration_seconds
+        total_mins = sec // 60
+        hours = total_mins // 60
+        mins = total_mins % 60
+        if hours > 0:
+            return f"{hours}h {mins:02d}m"
+        if mins > 0:
+            return f"{mins}m"
+        return f"{sec}s"
+
     def __str__(self):
         return f"{self.employee} — {self.checked_in_at:%Y-%m-%d %H:%M}"

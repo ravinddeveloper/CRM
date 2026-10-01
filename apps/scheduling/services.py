@@ -241,3 +241,79 @@ def clock_out(user, latitude=None, longitude=None, accuracy=None, ip_address=Non
     shift.check_out_ip = ip_address
     shift.save(update_fields=["checked_out_at", "check_out_distance_meters", "check_out_accuracy_meters", "check_out_ip", "updated_at"])
     return shift
+
+
+def format_seconds_to_hm(seconds):
+    """Convert a duration in seconds to a human-readable format like '1h 30m', '45m', or '0h 0m'."""
+    sec = max(0, int(seconds))
+    total_mins = sec // 60
+    hours = total_mins // 60
+    mins = total_mins % 60
+    if hours > 0:
+        return f"{hours}h {mins:02d}m"
+    if mins > 0:
+        return f"{mins}m"
+    if sec > 0:
+        return f"{sec}s"
+    return "0h 0m"
+
+
+def get_shift_statistics(shifts_queryset=None, employee=None):
+    """
+    Calculate total work hours and today's total work hours across staff shifts.
+
+    Args:
+        shifts_queryset: Optional queryset to calculate from (defaults to StaffShift.objects.all()).
+        employee: Optional User to filter by.
+
+    Returns:
+        dict containing:
+            - total_seconds: integer sum of shift seconds
+            - total_hours: float decimal hours rounded to 2 decimal places
+            - formatted_total_hours: human-readable string (e.g. '8h 30m')
+            - today_seconds: integer sum of today's shift seconds
+            - today_hours: float decimal hours rounded to 2 decimal places
+            - formatted_today_hours: human-readable string (e.g. '3h 15m')
+            - open_shifts_count: number of currently active/open shifts
+            - total_shifts_count: total shifts counted
+            - today_shifts_count: total shifts recorded today
+    """
+    qs = shifts_queryset if shifts_queryset is not None else StaffShift.objects.select_related("employee").all()
+    if employee is not None:
+        qs = qs.filter(employee=employee)
+
+    now = timezone.now()
+    today_date = timezone.localdate(now)
+
+    total_seconds = 0
+    today_seconds = 0
+    open_shifts_count = 0
+    today_shifts_count = 0
+    shifts_list = list(qs)
+
+    for shift in shifts_list:
+        dur = shift.duration_seconds
+        total_seconds += dur
+        if shift.is_open:
+            open_shifts_count += 1
+
+        # Check if the shift started today or finished today
+        shift_in_date = timezone.localdate(shift.checked_in_at)
+        shift_out_date = timezone.localdate(shift.checked_out_at) if shift.checked_out_at else shift_in_date
+
+        if shift_in_date == today_date or shift_out_date == today_date:
+            today_seconds += dur
+            today_shifts_count += 1
+
+    return {
+        "total_seconds": total_seconds,
+        "total_hours": round(total_seconds / 3600.0, 2),
+        "formatted_total_hours": format_seconds_to_hm(total_seconds),
+        "today_seconds": today_seconds,
+        "today_hours": round(today_seconds / 3600.0, 2),
+        "formatted_today_hours": format_seconds_to_hm(today_seconds),
+        "open_shifts_count": open_shifts_count,
+        "total_shifts_count": len(shifts_list),
+        "today_shifts_count": today_shifts_count,
+    }
+

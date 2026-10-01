@@ -50,11 +50,15 @@
       [x-cloak] { display: none !important; }
       .progress-bar { transition: width 0.4s ease-in-out; }
       .sidebar-link.active { background-color: var(--portal-primary); color: var(--portal-inverse-text); }
+      html, body {
+        overflow-x: hidden;
+        max-width: 100vw;
+      }
     </style>
 
     {% block extra_head %}{% endblock %}
 </head>
-<body class="h-full bg-gray-50 font-sans antialiased" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<body class="min-h-full bg-gray-950 text-gray-100 font-sans antialiased overflow-x-hidden" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
     <!-- Toast notifications container -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2" aria-live="polite"></div>

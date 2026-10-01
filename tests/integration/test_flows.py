@@ -356,3 +356,279 @@ class TestStudyMaterialsAndNotesFlow(TestCase):
         self.assertEqual(del_res.status_code, 302)
         self.assertFalse(Attachment.objects.filter(id=att.id).exists())
 
+
+class TestTeacherCourseDashboardAndPublishFlow(TestCase):
+    """Integration tests for teacher course management and publishing."""
+
+    def setUp(self):
+        self.client = Client()
+        self.teacher = make_teacher(email="teacher_dashboard_test@test.com")
+        self.course = make_course(teacher=self.teacher, status="draft")
+        self.section = make_section(course=self.course)
+        self.lecture = make_lecture(section=self.section, is_published=True)
+
+    def test_teacher_course_list_renders_successfully(self):
+        self.client.force_login(self.teacher)
+        url = reverse("teacher:course_list")
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, self.course.title)
+
+    def test_teacher_course_toggle_publish(self):
+        self.client.force_login(self.teacher)
+        toggle_url = reverse("teacher:course_toggle_publish", kwargs={"course_id": self.course.id})
+        res = self.client.post(toggle_url)
+        self.assertEqual(res.status_code, 302)
+        self.course.refresh_from_db()
+        self.assertTrue(self.course.is_published)
+
+        # Toggle back to draft
+        res = self.client.post(toggle_url)
+        self.assertEqual(res.status_code, 302)
+        self.course.refresh_from_db()
+        self.assertFalse(self.course.is_published)
+
+    def test_teacher_sections_view_renders_with_all_action_urls(self):
+        self.client.force_login(self.teacher)
+        sections_url = reverse("teacher:sections", kwargs={"course_id": self.course.id})
+        res = self.client.get(sections_url)
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, self.section.title)
+        self.assertContains(res, self.lecture.title)
+
+    def test_teacher_video_upload_view_renders_without_error(self):
+        self.client.force_login(self.teacher)
+        upload_url = reverse("teacher:lecture_video_upload", kwargs={
+            "course_id": self.course.id,
+            "lecture_id": self.lecture.id
+        })
+        res = self.client.get(upload_url)
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, self.lecture.title)
+
+    def test_teacher_analytics_and_student_progress_flow(self):
+        from apps.certificates.models import Certificate
+        from apps.progress.services import ProgressService
+        from tests.factories import make_enrollment, make_student
+
+        student = make_student()
+        # Course with 2 published lectures
+        lecture2 = make_lecture(section=self.section, is_published=True)
+        enrollment = make_enrollment(user=student, course=self.course)
+
+        self.client.force_login(self.teacher)
+        res_analytics = self.client.get(reverse("teacher:analytics"))
+        self.assertEqual(res_analytics.status_code, 200)
+        self.assertContains(res_analytics, "0.0%")
+
+        # Student completes lecture 1 (50% progress)
+        lp1 = ProgressService.update_lecture_position(
+            user=student,
+            lecture=self.lecture,
+            position_seconds=600,
+            watched_seconds=600,
+            video_duration=600,
+        )
+        self.assertTrue(lp1.is_completed)
+        enrollment.progress.refresh_from_db()
+        self.assertEqual(float(enrollment.progress.completion_percentage), 50.0)
+
+        # Check analytics after 50%
+        res_analytics_mid = self.client.get(reverse("teacher:analytics"))
+        self.assertEqual(res_analytics_mid.status_code, 200)
+        self.assertContains(res_analytics_mid, "50.0%")
+
+        # Student completes lecture 2 (100% course completion)
+        lp2 = ProgressService.update_lecture_position(
+            user=student,
+            lecture=lecture2,
+            position_seconds=600,
+            watched_seconds=600,
+            video_duration=600,
+        )
+        self.assertTrue(lp2.is_completed)
+        enrollment.progress.refresh_from_db()
+        self.assertEqual(float(enrollment.progress.completion_percentage), 100.0)
+        self.assertTrue(enrollment.progress.is_completed)
+
+        # Certificate auto-created
+        cert = Certificate.objects.filter(enrollment=enrollment).first()
+        self.assertIsNotNone(cert)
+
+        # Analytics reflects 100% and 1 certificate
+        res_analytics_end = self.client.get(reverse("teacher:analytics"))
+        self.assertEqual(res_analytics_end.status_code, 200)
+        self.assertContains(res_analytics_end, "100.0%")
+
+    def test_admin_course_delete_with_enrollments_archives_safely(self):
+        from apps.courses.models import CourseStatus
+        from tests.factories import make_admin, make_enrollment, make_student
+
+        admin_user = make_admin()
+        student = make_student()
+        enrollment = make_enrollment(user=student, course=self.course)
+
+        self.client.force_login(admin_user)
+        delete_url = reverse("admin_panel:course_delete", kwargs={"course_id": self.course.id})
+
+        # Standard deletion with active enrollment should not crash with ProtectedError
+        res = self.client.post(delete_url, follow=True)
+        self.assertEqual(res.status_code, 200)
+
+        self.course.refresh_from_db()
+        # Course should be safely archived, preserving student learning records
+        self.assertEqual(self.course.status, CourseStatus.ARCHIVED)
+        self.assertTrue(self.course.enrollments.filter(id=enrollment.id).exists())
+
+    def test_admin_course_force_delete_purges_course_and_enrollments(self):
+        from apps.courses.models import Course
+        from apps.enrollments.models import Enrollment
+        from tests.factories import make_admin, make_enrollment, make_student
+
+        admin_user = make_admin()
+        student = make_student()
+        enrollment = make_enrollment(user=student, course=self.course)
+
+        self.client.force_login(admin_user)
+        delete_url = reverse("admin_panel:course_delete", kwargs={"course_id": self.course.id})
+
+        # Force delete should permanently wipe course and related enrollments
+        res = self.client.post(delete_url, {"force_delete": "true"}, follow=True)
+        self.assertEqual(res.status_code, 200)
+
+        self.assertFalse(Course.objects.filter(id=self.course.id).exists())
+        self.assertFalse(Enrollment.objects.filter(id=enrollment.id).exists())
+
+
+class TestAdminCategoryManagementFlow(TestCase):
+    """Test full Category CRUD and visibility flows in Admin Console."""
+
+    def setUp(self):
+        self.client = Client()
+        self.admin = make_admin(email="categoryadmin@eduflow.local")
+        self.student = make_student(email="categorystudent@eduflow.local")
+        self.teacher = make_teacher(email="categoryteacher@eduflow.local")
+
+    def test_admin_can_access_category_list(self):
+        """Admin can view category listing with search and stats."""
+        from apps.courses.models import Category
+        Category.objects.create(name="Web Dev Test", slug="web-dev-test", icon="💻", is_active=True)
+
+        self.client.force_login(self.admin)
+        res = self.client.get(reverse("admin_panel:category_list"))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Web Dev Test")
+        self.assertContains(res, "💻")
+
+    def test_admin_can_create_category(self):
+        """Admin can create a new category with auto-slug generation."""
+        from apps.courses.models import Category
+
+        self.client.force_login(self.admin)
+        create_url = reverse("admin_panel:category_create")
+
+        # GET form
+        res_get = self.client.get(create_url)
+        self.assertEqual(res_get.status_code, 200)
+
+        # POST create
+        res_post = self.client.post(
+            create_url,
+            {
+                "name": "Cloud Computing & DevOps",
+                "slug": "",  # test auto slugify
+                "icon": "☁️",
+                "order": 5,
+                "is_active": "on",
+                "description": "All about Docker, Kubernetes, AWS, and GCP",
+            },
+            follow=True,
+        )
+        self.assertEqual(res_post.status_code, 200)
+
+        cat = Category.objects.filter(slug="cloud-computing-devops").first()
+        self.assertIsNotNone(cat)
+        self.assertEqual(cat.name, "Cloud Computing & DevOps")
+        self.assertEqual(cat.icon, "☁️")
+        self.assertEqual(cat.order, 5)
+        self.assertTrue(cat.is_active)
+
+    def test_admin_can_edit_category(self):
+        """Admin can update an existing category."""
+        from apps.courses.models import Category
+        cat = Category.objects.create(name="Original Tech", slug="original-tech", icon="📱", is_active=True)
+
+        self.client.force_login(self.admin)
+        edit_url = reverse("admin_panel:category_edit", kwargs={"category_id": cat.id})
+
+        res_post = self.client.post(
+            edit_url,
+            {
+                "name": "Updated Technology",
+                "slug": "updated-technology",
+                "icon": "🚀",
+                "order": 2,
+                "description": "Updated description content.",
+            },
+            follow=True,
+        )
+        self.assertEqual(res_post.status_code, 200)
+
+        cat.refresh_from_db()
+        self.assertEqual(cat.name, "Updated Technology")
+        self.assertEqual(cat.slug, "updated-technology")
+        self.assertEqual(cat.icon, "🚀")
+        self.assertFalse(cat.is_active)  # unchecked on POST
+
+    def test_admin_can_toggle_category_status(self):
+        """Admin can toggle category active/inactive via POST."""
+        from apps.courses.models import Category
+        cat = Category.objects.create(name="Toggle Test", slug="toggle-test", is_active=True)
+
+        self.client.force_login(self.admin)
+        toggle_url = reverse("admin_panel:category_toggle", kwargs={"category_id": cat.id})
+
+        # Toggle to inactive
+        res = self.client.post(toggle_url, follow=True)
+        self.assertEqual(res.status_code, 200)
+        cat.refresh_from_db()
+        self.assertFalse(cat.is_active)
+
+        # Toggle back to active
+        res2 = self.client.post(toggle_url, follow=True)
+        self.assertEqual(res2.status_code, 200)
+        cat.refresh_from_db()
+        self.assertTrue(cat.is_active)
+
+    def test_admin_can_delete_category_safely_unlinking_courses(self):
+        """Deleting category unlinks courses without crashing with ProtectedError."""
+        from apps.courses.models import Category, Course
+        cat = Category.objects.create(name="Delete Target", slug="delete-target", is_active=True)
+        course = make_course(teacher=self.teacher, category=cat)
+
+        self.assertEqual(course.category_id, cat.id)
+
+        self.client.force_login(self.admin)
+        delete_url = reverse("admin_panel:category_delete", kwargs={"category_id": cat.id})
+
+        res = self.client.post(delete_url, follow=True)
+        self.assertEqual(res.status_code, 200)
+
+        self.assertFalse(Category.objects.filter(id=cat.id).exists())
+        course.refresh_from_db()
+        self.assertIsNone(course.category)  # cleanly unlinked
+
+    def test_non_admin_cannot_access_categories(self):
+        """Students and unauthenticated users cannot access category management."""
+        list_url = reverse("admin_panel:category_list")
+
+        # Unauthenticated -> redirect
+        res_anon = self.client.get(list_url)
+        self.assertIn(res_anon.status_code, [302, 403])
+
+        # Student -> redirect or 403
+        self.client.force_login(self.student)
+        res_student = self.client.get(list_url)
+        self.assertIn(res_student.status_code, [302, 403])
+
+

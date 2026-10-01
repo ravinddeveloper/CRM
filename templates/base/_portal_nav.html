@@ -1,0 +1,207 @@
+<!-- Shared Portal & Student Navigation Toolbar -->
+<nav class="sticky top-0 z-40 bg-gray-900/95 backdrop-blur-md border-b border-gray-800 w-full max-w-full" x-data="{ mobileMenuOpen: false }">
+  <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
+    <div class="flex items-center justify-between h-16">
+      
+      <!-- Brand & Left Nav Links -->
+      <div class="flex items-center gap-3 sm:gap-6 min-w-0">
+        <a href="/" class="flex items-center gap-2 sm:gap-2.5 group min-w-0">
+          <div class="w-8 h-8 flex-shrink-0 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-lg flex items-center justify-center font-bold text-white text-sm shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
+            {% if PLATFORM_LOGO_URL %}<img src="{{ PLATFORM_LOGO_URL }}" alt="{{ PLATFORM_NAME }}" class="w-full h-full object-contain rounded-lg">{% else %}{{ PLATFORM_NAME|first|upper }}{% endif %}
+          </div>
+          <span class="font-bold text-base sm:text-lg text-white group-hover:text-brand-300 transition-colors truncate">
+            {{ PLATFORM_NAME }}
+          </span>
+        </a>
+
+        <!-- Desktop Navigation Items (>= lg) -->
+        <div class="hidden lg:flex items-center gap-1">
+          <a href="{% url 'accounts:student_dashboard' %}"
+             class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors {% if active_nav == 'dashboard' %}bg-brand-600 text-white shadow-sm{% else %}text-gray-300 hover:text-white hover:bg-gray-800{% endif %}">
+            Dashboard
+          </a>
+
+          <a href="{% url 'marketplace:course_list' %}"
+             class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors {% if active_nav == 'courses' %}bg-brand-600 text-white shadow-sm{% else %}text-gray-300 hover:text-white hover:bg-gray-800{% endif %}">
+            Explore Courses
+          </a>
+
+          <a href="{% url 'marketplace:categories' %}"
+             class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors {% if active_nav == 'categories' %}bg-brand-600 text-white shadow-sm{% else %}text-gray-300 hover:text-white hover:bg-gray-800{% endif %}">
+            Categories
+          </a>
+
+          {% if request.user.is_authenticated %}
+          <a href="{% url 'accounts:my_orders' %}"
+             class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors {% if active_nav == 'orders' %}bg-brand-600 text-white shadow-sm{% else %}text-gray-300 hover:text-white hover:bg-gray-800{% endif %}">
+            Orders
+          </a>
+          {% endif %}
+
+          <a href="{% url 'scheduling:sessions' %}"
+             class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors {% if active_nav == 'scheduling' %}bg-brand-600 text-white shadow-sm{% else %}text-gray-300 hover:text-white hover:bg-gray-800{% endif %}">
+            {{ SCHEDULE_LABEL|default:"Classes & Sessions" }}
+          </a>
+
+          {% if request.user.is_authenticated and request.user.is_teacher or request.user.role == 'teacher' or request.user.is_admin %}
+          <a href="{% url 'scheduling:staff_attendance' %}"
+             class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors {% if active_nav == 'timeclock' %}bg-brand-600 text-white shadow-sm{% else %}text-gray-300 hover:text-white hover:bg-gray-800{% endif %}">
+            Time Clock
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Right Side Actions & Profile Option -->
+      <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+        {% if request.user.is_authenticated %}
+          {% if request.user.is_admin %}
+          <a href="{% url 'admin_panel:dashboard' %}"
+             class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600/10 hover:bg-purple-600/20 text-purple-300 border border-purple-500/20 transition-all">
+            <svg class="w-3.5 h-3.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+            <span class="hidden md:inline">Admin Console</span>
+            <span class="md:hidden">Admin</span>
+          </a>
+          {% elif request.user.is_teacher %}
+          <a href="{% url 'teacher:dashboard' %}"
+             class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-brand-600/10 hover:bg-brand-600/20 text-brand-300 border border-brand-500/20 transition-all">
+            <svg class="w-3.5 h-3.5 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+            <span class="hidden md:inline">Instructor Console</span>
+            <span class="md:hidden">Instructor</span>
+          </a>
+          {% endif %}
+
+          <!-- Profile Option Dropdown -->
+          {% include "base/_profile_dropdown.html" %}
+
+        {% else %}
+          <a href="{% url 'accounts:login' %}"
+             class="px-3 py-1.5 text-xs font-semibold text-gray-300 hover:text-white transition-colors">
+            Sign In
+          </a>
+          <a href="{% url 'accounts:register' %}"
+             class="px-3 sm:px-4 py-1.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-500/25 transition-all">
+            Get Started
+          </a>
+        {% endif %}
+
+        <!-- Mobile Menu Toggle Button (Hamburger / Close) -->
+        <button @click="mobileMenuOpen = !mobileMenuOpen"
+                type="button"
+                class="lg:hidden p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none transition-colors"
+                aria-label="Toggle navigation menu">
+          <svg x-show="!mobileMenuOpen" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+          <svg x-show="mobileMenuOpen" x-cloak class="w-5 h-5 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Quick Horizontal Pills Bar -->
+    <div class="lg:hidden flex items-center gap-1.5 overflow-x-auto py-2 border-t border-gray-800/60 text-xs no-scrollbar">
+      <a href="{% url 'accounts:student_dashboard' %}" class="px-2.5 py-1 rounded-md whitespace-nowrap {% if active_nav == 'dashboard' %}bg-brand-600 text-white font-semibold{% else %}text-gray-300 hover:bg-gray-800{% endif %}">Dashboard</a>
+      <a href="{% url 'marketplace:course_list' %}" class="px-2.5 py-1 rounded-md whitespace-nowrap {% if active_nav == 'courses' %}bg-brand-600 text-white font-semibold{% else %}text-gray-300 hover:bg-gray-800{% endif %}">Explore</a>
+      <a href="{% url 'marketplace:categories' %}" class="px-2.5 py-1 rounded-md whitespace-nowrap {% if active_nav == 'categories' %}bg-brand-600 text-white font-semibold{% else %}text-gray-300 hover:bg-gray-800{% endif %}">Categories</a>
+      {% if request.user.is_authenticated %}
+      <a href="{% url 'accounts:my_orders' %}" class="px-2.5 py-1 rounded-md whitespace-nowrap {% if active_nav == 'orders' %}bg-brand-600 text-white font-semibold{% else %}text-gray-300 hover:bg-gray-800{% endif %}">Orders</a>
+      {% endif %}
+      <a href="{% url 'scheduling:sessions' %}" class="px-2.5 py-1 rounded-md whitespace-nowrap {% if active_nav == 'scheduling' %}bg-brand-600 text-white font-semibold{% else %}text-gray-300 hover:bg-gray-800{% endif %}">{{ SCHEDULE_LABEL|default:"Classes" }}</a>
+      {% if request.user.is_authenticated and request.user.is_teacher or request.user.role == 'teacher' or request.user.is_admin %}
+      <a href="{% url 'teacher:dashboard' %}" class="px-2.5 py-1 rounded-md whitespace-nowrap bg-brand-500/10 text-brand-300 border border-brand-500/20">Instructor</a>
+      <a href="{% url 'scheduling:staff_attendance' %}" class="px-2.5 py-1 rounded-md whitespace-nowrap text-gray-300 hover:bg-gray-800">Time Clock</a>
+      {% endif %}
+      {% if request.user.is_authenticated and request.user.is_admin %}
+      <a href="{% url 'admin_panel:dashboard' %}" class="px-2.5 py-1 rounded-md whitespace-nowrap bg-purple-500/10 text-purple-300 border border-purple-500/20">Admin</a>
+      {% endif %}
+    </div>
+
+    <!-- Mobile Expandable Full Navigation Drawer -->
+    <div x-show="mobileMenuOpen"
+         x-cloak
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 -translate-y-2"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 -translate-y-2"
+         class="lg:hidden border-t border-gray-800 py-4 space-y-2 bg-gray-900/95">
+      <a href="{% url 'accounts:student_dashboard' %}"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium {% if active_nav == 'dashboard' %}bg-brand-600/20 text-brand-400 border border-brand-500/30{% else %}text-gray-200 hover:bg-gray-800{% endif %}">
+        <svg class="w-5 h-5 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+        <span>Student Dashboard</span>
+      </a>
+
+      <a href="{% url 'marketplace:course_list' %}"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium {% if active_nav == 'courses' %}bg-brand-600/20 text-brand-400 border border-brand-500/30{% else %}text-gray-200 hover:bg-gray-800{% endif %}">
+        <svg class="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <span>Explore Courses</span>
+      </a>
+
+      <a href="{% url 'marketplace:categories' %}"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium {% if active_nav == 'categories' %}bg-brand-600/20 text-brand-400 border border-brand-500/30{% else %}text-gray-200 hover:bg-gray-800{% endif %}">
+        <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+        <span>Course Categories</span>
+      </a>
+
+      {% if request.user.is_authenticated %}
+      <a href="{% url 'accounts:my_orders' %}"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium {% if active_nav == 'orders' %}bg-brand-600/20 text-brand-400 border border-brand-500/30{% else %}text-gray-200 hover:bg-gray-800{% endif %}">
+        <svg class="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+        </svg>
+        <span>My Orders & Invoices</span>
+      </a>
+      {% endif %}
+
+      <a href="{% url 'scheduling:sessions' %}"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium {% if active_nav == 'scheduling' %}bg-brand-600/20 text-brand-400 border border-brand-500/30{% else %}text-gray-200 hover:bg-gray-800{% endif %}">
+        <svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span>{{ SCHEDULE_LABEL|default:"Classes & Sessions" }}</span>
+      </a>
+
+      {% if request.user.is_authenticated and request.user.is_teacher or request.user.role == 'teacher' or request.user.is_admin %}
+      <div class="pt-2 border-t border-gray-800">
+        <p class="px-3 text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Staff Access</p>
+        <a href="{% url 'teacher:dashboard' %}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-brand-300 hover:bg-gray-800">
+          <svg class="w-5 h-5 text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          <span>Instructor Console</span>
+        </a>
+        <a href="{% url 'scheduling:staff_attendance' %}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-800">
+          <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Time Clock & Attendance</span>
+        </a>
+      </div>
+      {% endif %}
+
+      {% if request.user.is_authenticated and request.user.is_admin %}
+      <div class="pt-2 border-t border-gray-800">
+        <p class="px-3 text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Admin Access</p>
+        <a href="{% url 'admin_panel:dashboard' %}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-purple-300 hover:bg-gray-800">
+          <svg class="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span>Admin Console</span>
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</nav>

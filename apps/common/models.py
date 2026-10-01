@@ -137,6 +137,12 @@ def get_platform_settings():
     except Exception:
         value = None
     if value is None:
+        from apps.common.theme import FIELD_NAMES, PALETTE_DEFAULTS, get_portal_colors
+
+        env_palette = get_portal_colors({
+            field: getattr(settings, f"PORTAL_{token.upper()}_COLOR", PALETTE_DEFAULTS[token])
+            for token, field in FIELD_NAMES.items()
+        })
         value = {
             "name": getattr(settings, "PLATFORM_NAME", "LearnPro"),
             "tagline": "",
@@ -148,19 +154,7 @@ def get_platform_settings():
             "billing_address": "",
             "tax_registration_number": "",
             "invoice_footer": "",
-            "primary_color": "#4f46e5",
-            "accent_color": "#7c3aed",
-            "background_color": "#030712",
-            "surface_color": "#111827",
-            "raised_surface_color": "#1f2937",
-            "text_color": "#f9fafb",
-            "muted_text_color": "#9ca3af",
-            "border_color": "#374151",
-            "inverse_text_color": "#ffffff",
-            "success_color": "#10b981",
-            "warning_color": "#f59e0b",
-            "error_color": "#ef4444",
-            "info_color": "#3b82f6",
+            **{FIELD_NAMES[token]: color for token, color in env_palette.items()},
             "business_type": BusinessType.LEARNING,
             "member_label": "Student",
             "staff_label": "Teacher",

@@ -259,3 +259,78 @@ def get_course_progress(request, course_id: str) -> Response:
         ),
         "lectures": lecture_data,
     })
+
+
+@api_view(["POST"])
+@authentication_classes([SessionAuthentication, JWTAuthentication])
+@permission_classes([AllowAny])
+def heartbeat_view(request) -> Response:
+    """
+    Heartbeat ping sent by video player every 15 seconds.
+    Updates playback position, cumulative watch time, and verifies completion thresholds.
+    """
+    auth_err = _check_authenticated(request)
+    if auth_err:
+        return auth_err
+
+    data = request.data
+    lecture_id = data.get("lecture_id")
+    if not lecture_id:
+        return _error_response("lecture_id is required.", code="MISSING_PARAM", status_code=400)
+
+    lecture = get_object_or_404(Lecture, pk=lecture_id, is_published=True)
+    course = lecture.section.course
+
+    if not lecture.is_free_preview and not EnrollmentService.has_access(request.user, course):
+        return _error_response("You do not have access to this course.", code="COURSE_ACCESS_DENIED", status_code=403)
+
+    try:
+        position_seconds = int(data.get("position_seconds", 0))
+        watched_seconds = int(data.get("watched_seconds", 0))
+        video_duration = int(data.get("video_duration", 0))
+    except (ValueError, TypeError) as exc:
+        return _error_response(f"Invalid payload: {exc}", status_code=400)
+
+    if position_seconds < 0 or watched_seconds < 0 or video_duration < 0:
+        return _error_response("Invalid time values.", status_code=400)
+    if video_duration > 0 and position_seconds > video_duration + 5:
+        position_seconds = video_duration
+    if video_duration > 0 and watched_seconds > video_duration + 5:
+        watched_seconds = video_duration
+
+    if lecture.is_free_preview and not EnrollmentService.has_access(request.user, course):
+        return Response({
+            "success": True,
+            "lecture_id": str(lecture_id),
+            "position_seconds": position_seconds,
+            "completion_percentage": "0.00",
+            "is_completed": False,
+            "course_completion_percentage": "0.00",
+            "is_free_preview": True,
+        })
+
+    try:
+        lecture_progress = ProgressService.update_lecture_position(
+            user=request.user,
+            lecture=lecture,
+            position_seconds=position_seconds,
+            watched_seconds=watched_seconds,
+            video_duration=video_duration,
+        )
+    except PermissionError as exc:
+        return _error_response(str(exc), code="COURSE_ACCESS_DENIED", status_code=403)
+    except Exception as exc:
+        logger.error("Heartbeat error for user=%s lecture=%s: %s", request.user.pk, lecture_id, exc)
+        return _error_response("Failed to update heartbeat progress.", status_code=500)
+
+    return Response({
+        "success": True,
+        "lecture_id": str(lecture_id),
+        "position_seconds": lecture_progress.video_position_seconds,
+        "completion_percentage": str(lecture_progress.completion_percentage),
+        "is_completed": lecture_progress.is_completed,
+        "course_completion_percentage": str(
+            lecture_progress.course_progress.completion_percentage
+        ),
+        "course_is_completed": lecture_progress.course_progress.is_completed,
+    })

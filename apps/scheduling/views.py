@@ -10,7 +10,15 @@ from django.views.decorators.http import require_POST
 from apps.accounts.models import UserRole
 
 from .models import BookingStatus, Session, SessionBooking, SessionStatus, StaffShift
-from .services import book_session, can_clock_in, cancel_booking, check_in_member, clock_in, clock_out
+from .services import (
+    book_session,
+    can_clock_in,
+    cancel_booking,
+    check_in_member,
+    clock_in,
+    clock_out,
+    get_shift_statistics,
+)
 
 
 @login_required
@@ -85,7 +93,16 @@ def staff_attendance(request):
         raise PermissionDenied("Employee or instructor access is required to use the staff time clock.")
     open_shift = StaffShift.objects.filter(employee=request.user, checked_out_at__isnull=True).first()
     shifts = StaffShift.objects.filter(employee=request.user).order_by("-checked_in_at")[:30]
-    return render(request, "scheduling/staff_attendance.html", {"open_shift": open_shift, "shifts": shifts})
+    shift_stats = get_shift_statistics(employee=request.user)
+    return render(request, "scheduling/staff_attendance.html", {
+        "open_shift": open_shift,
+        "shifts": shifts,
+        "shift_stats": shift_stats,
+        "today_work_hours": shift_stats["formatted_today_hours"],
+        "today_work_hours_decimal": shift_stats["today_hours"],
+        "total_work_hours": shift_stats["formatted_total_hours"],
+        "total_work_hours_decimal": shift_stats["total_hours"],
+    })
 
 
 @login_required
