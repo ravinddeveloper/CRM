@@ -1,0 +1,1 @@
+"""Course catalog repository implementations."""
