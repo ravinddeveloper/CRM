@@ -210,3 +210,21 @@ class Section(BaseModel):
 
     def __str__(self):
         return f"{self.course.title} - {self.title}"
+
+
+class CourseCatalogSyncEvent(models.Model):
+    """Transactional SQL outbox for the Mongo published-course read model."""
+    UPSERT = "upsert"
+    DELETE = "delete"
+    EVENT_CHOICES = [(UPSERT, "Upsert"), (DELETE, "Delete")]
+
+    event_type = models.CharField(max_length=10, choices=EVENT_CHOICES)
+    course_id = models.UUIDField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["processed_at", "created_at"])]
