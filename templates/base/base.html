@@ -16,10 +16,17 @@
           extend: {
             colors: {
               brand: {
-                50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd',
-                300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9',
-                600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e'
-              }
+                50: 'color-mix(in srgb, var(--portal-primary) 8%, white)',
+                100: 'color-mix(in srgb, var(--portal-primary) 16%, white)',
+                200: 'color-mix(in srgb, var(--portal-primary) 30%, white)',
+                300: 'color-mix(in srgb, var(--portal-primary) 50%, white)',
+                400: 'color-mix(in srgb, var(--portal-primary) 70%, white)',
+                500: 'var(--portal-primary)', 600: 'var(--portal-primary)',
+                700: 'color-mix(in srgb, var(--portal-primary) 80%, black)',
+                800: 'color-mix(in srgb, var(--portal-primary) 65%, black)',
+                900: 'color-mix(in srgb, var(--portal-primary) 50%, black)'
+              },
+              primary: 'var(--portal-primary)', accent: 'var(--portal-accent)'
             },
             fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
           }
@@ -39,9 +46,10 @@
 
     <!-- Custom styles -->
     <style>
+      {{ PORTAL_THEME_CSS|safe }}
       [x-cloak] { display: none !important; }
       .progress-bar { transition: width 0.4s ease-in-out; }
-      .sidebar-link.active { @apply bg-brand-600 text-white; }
+      .sidebar-link.active { background-color: var(--portal-primary); color: var(--portal-inverse-text); }
     </style>
 
     {% block extra_head %}{% endblock %}

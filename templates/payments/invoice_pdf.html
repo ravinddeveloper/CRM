@@ -4,29 +4,29 @@
   <meta charset="utf-8">
   <title>Invoice #{{ invoice.invoice_number }}</title>
   <style>
-    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; margin: 40px; font-size: 13px; line-height: 1.5; }
-    .header { border-bottom: 2px solid {{ branding.primary_color }}; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; }
-    .logo { font-size: 24px; font-weight: 800; color: {{ branding.primary_color }}; }
-    .meta { text-align: right; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: {{ portal_colors.invoice_text }}; background: {{ portal_colors.invoice_background }}; margin: 40px; font-size: 13px; line-height: 1.5; }
+    .header { border-bottom: 2px solid {{ portal_colors.primary }}; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; }
+    .logo { font-size: 24px; font-weight: 800; color: {{ portal_colors.primary }}; }
+    .meta { text-align: right; color: {{ portal_colors.invoice_muted_text }}; }
     .title { font-size: 20px; font-weight: bold; margin-bottom: 20px; }
     .details { width: 100%; margin-bottom: 30px; }
     .details td { vertical-align: top; }
     table.items { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-    table.items th { background: #f8fafc; border-bottom: 2px solid #cbd5e1; text-align: left; padding: 10px; font-weight: 600; font-size: 12px; }
-    table.items td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; }
+    table.items th { background: {{ portal_colors.invoice_surface }}; border-bottom: 2px solid {{ portal_colors.invoice_border }}; text-align: left; padding: 10px; font-weight: 600; font-size: 12px; }
+    table.items td { padding: 12px 10px; border-bottom: 1px solid {{ portal_colors.invoice_border }}; }
     .totals { width: 40%; margin-left: auto; margin-bottom: 40px; }
     .totals table { width: 100%; }
     .totals td { padding: 6px 0; }
     .totals td:last-child { text-align: right; }
-    .total-row { font-size: 16px; font-weight: bold; border-top: 2px solid #1e293b; color: {{ branding.primary_color }}; }
-    .footer { font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; }
+    .total-row { font-size: 16px; font-weight: bold; border-top: 2px solid {{ portal_colors.invoice_border }}; color: {{ portal_colors.primary }}; }
+    .footer { font-size: 11px; color: {{ portal_colors.invoice_muted_text }}; border-top: 1px solid {{ portal_colors.invoice_border }}; padding-top: 20px; text-align: center; }
   </style>
 </head>
 <body>
   <div class="header">
     <div>
       {% if PLATFORM_LOGO_URL %}<img src="{{ PLATFORM_LOGO_URL }}" alt="{{ PLATFORM_NAME }}" style="max-height:64px;max-width:220px">{% else %}<div class="logo">{{ PLATFORM_NAME }}</div>{% endif %}
-      {% if branding.tagline %}<p style="color: #64748b; margin-top: 4px;">{{ branding.tagline }}</p>{% endif %}
+      {% if branding.tagline %}<p style="color: {{ portal_colors.invoice_muted_text }}; margin-top: 4px;">{{ branding.tagline }}</p>{% endif %}
       {% if branding.legal_name %}<p>{{ branding.legal_name }}</p>{% endif %}
       {% if branding.billing_address %}<p>{{ branding.billing_address|linebreaksbr }}</p>{% endif %}
       {% if branding.tax_registration_number %}<p>Tax ID: {{ branding.tax_registration_number }}</p>{% endif %}
@@ -84,7 +84,7 @@
         <td>{{ order.currency }} {{ order.subtotal }}</td>
       </tr>
       {% if order.discount_amount > 0 %}
-      <tr style="color: #059669;">
+      <tr style="color: {{ portal_colors.success }};">
         <td>Coupon Discount:</td>
         <td>-{{ order.currency }} {{ order.discount_amount }}</td>
       </tr>

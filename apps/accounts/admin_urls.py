@@ -1,6 +1,8 @@
 """Admin panel URLs for accounts, courses, transactions, coupons, and enrollments."""
 from django.urls import path
 
+from apps.scheduling import admin_views as scheduling_admin_views
+
 from . import admin_views
 
 app_name = "admin_panel"
@@ -8,6 +10,12 @@ app_name = "admin_panel"
 urlpatterns = [
     # Overview
     path("", admin_views.dashboard_view, name="dashboard"),
+
+    # Business sessions, bookings, and attendance
+    path("schedule/", scheduling_admin_views.schedule_attendance_view, name="schedule_attendance"),
+    path("schedule/create/", scheduling_admin_views.session_create_view, name="session_create"),
+    path("schedule/<uuid:session_id>/edit/", scheduling_admin_views.session_edit_view, name="session_edit"),
+    path("schedule/<uuid:session_id>/status/", scheduling_admin_views.session_status_action, name="session_status"),
 
     # Course Management
     path("courses/", admin_views.course_list_view, name="course_list"),

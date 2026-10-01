@@ -7,6 +7,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 
 from apps.common.models import get_platform_settings
+from apps.common.theme import get_portal_colors
 
 logger = logging.getLogger("payments")
 
@@ -48,12 +49,14 @@ class InvoiceService:
             branding = get_platform_settings()
             logo = branding.get("logo") if isinstance(branding, dict) else branding.logo
             website_url = branding.get("website_url") if isinstance(branding, dict) else branding.website_url
+            portal_colors = get_portal_colors(branding)
             html_content = render_to_string("payments/invoice_pdf.html", {
                 "invoice": invoice,
                 "order": invoice.order,
                 "PLATFORM_NAME": branding.get("name") if isinstance(branding, dict) else branding.name,
                 "PLATFORM_LOGO_URL": logo.url if logo else "",
                 "branding": branding,
+                "portal_colors": portal_colors,
                 "platform_url": getattr(settings, "PLATFORM_URL", "http://localhost:8000"),
             })
             return HTML(
@@ -98,18 +101,21 @@ class InvoiceService:
             styles = getSampleStyleSheet()
 
             branding = get_platform_settings()
-            primary = branding.get("primary_color", "#4f46e5") if isinstance(branding, dict) else branding.primary_color
+            portal_colors = get_portal_colors(branding)
+            primary = portal_colors["primary"]
             tagline = branding.get("tagline", "") if isinstance(branding, dict) else branding.tagline
             legal_name = branding.get("legal_name", "") if isinstance(branding, dict) else branding.legal_name
             billing_address = branding.get("billing_address", "") if isinstance(branding, dict) else branding.billing_address
             tax_number = branding.get("tax_registration_number", "") if isinstance(branding, dict) else branding.tax_registration_number
             invoice_footer = branding.get("invoice_footer", "") if isinstance(branding, dict) else branding.invoice_footer
-            primary_color = colors.HexColor(primary if primary.startswith("#") and len(primary) == 7 else "#4F46E5")
-            dark_color = colors.HexColor("#0F172A")
-            muted_color = colors.HexColor("#64748B")
-            light_bg = colors.HexColor("#F8FAFC")
-            border_color = colors.HexColor("#CBD5E1")
-            subtle_border = colors.HexColor("#E2E8F0")
+            primary_color = colors.HexColor(primary)
+            muted_hex = portal_colors["invoice_muted_text"].upper()
+            success_hex = portal_colors["success"].upper()
+            dark_color = colors.HexColor(portal_colors["invoice_text"])
+            muted_color = colors.HexColor(portal_colors["invoice_muted_text"])
+            light_bg = colors.HexColor(portal_colors["invoice_surface"])
+            border_color = colors.HexColor(portal_colors["invoice_border"])
+            subtle_border = colors.HexColor(portal_colors["invoice_border"])
 
             title_style = ParagraphStyle(
                 "PlatformTitle",
@@ -207,8 +213,8 @@ class InvoiceService:
             # 1. Header Row: Platform info & Tax Invoice Title
             header_data = [
                 [
-                    Paragraph(f"<b>{escape(platform_name)}</b><br/><font color='#64748B' size='9'>{escape(tagline)}</font>", title_style),
-                    Paragraph(f"<b>TAX INVOICE</b><br/><font color='#64748B' size='9'>#{invoice.invoice_number}<br/>Date: {date_str}</font>", invoice_title_style),
+                    Paragraph(f"<b>{escape(platform_name)}</b><br/><font color='{muted_hex}' size='9'>{escape(tagline)}</font>", title_style),
+                    Paragraph(f"<b>TAX INVOICE</b><br/><font color='{muted_hex}' size='9'>#{invoice.invoice_number}<br/>Date: {date_str}</font>", invoice_title_style),
                 ]
             ]
             logo_field = branding.get("logo") if isinstance(branding, dict) else branding.logo
@@ -219,7 +225,7 @@ class InvoiceService:
                     header_data[0][0] = Table([
                         [logo_image],
                         [Paragraph(
-                            f"<b>{escape(platform_name)}</b><br/><font color='#64748B' size='9'>{escape(tagline)}</font>",
+                            f"<b>{escape(platform_name)}</b><br/><font color='{muted_hex}' size='9'>{escape(tagline)}</font>",
                             title_style,
                         )],
                     ], colWidths=[290])
@@ -256,7 +262,7 @@ class InvoiceService:
             details_data = [
                 [
                     Paragraph(f"<b>Billed To:</b><br/>{customer_name}<br/>{customer_email}<br/>User Ref: {user_id}", body_normal),
-                    Paragraph(f"<b>Payment Reference:</b><br/>Order Ref: {order_num}<br/>Transaction ID: {tx_id}<br/>Payment Status: <b><font color='#059669'>{status_text}</font></b>", body_right),
+                    Paragraph(f"<b>Payment Reference:</b><br/>Order Ref: {order_num}<br/>Transaction ID: {tx_id}<br/>Payment Status: <b><font color='{success_hex}'>{status_text}</font></b>", body_right),
                 ]
             ]
             details_table = Table(details_data, colWidths=[266, 266])
@@ -319,7 +325,7 @@ class InvoiceService:
             if discount and discount > 0:
                 totals_data.append([
                     Paragraph("Coupon Discount:", table_cell_right),
-                    Paragraph(f"<font color='#059669'>-{currency} {discount:,.2f}</font>", table_cell_right),
+                    Paragraph(f"<font color='{success_hex}'>-{currency} {discount:,.2f}</font>", table_cell_right),
                 ])
             if tax and tax > 0:
                 totals_data.append([

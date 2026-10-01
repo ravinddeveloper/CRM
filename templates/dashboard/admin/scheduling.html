@@ -1,0 +1,61 @@
+{% extends "base/base.html" %}
+
+{% block title %}Classes & Attendance — {{ PLATFORM_NAME }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 pb-16 text-gray-100">
+  {% include "dashboard/admin/_nav.html" %}
+  <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    {% if messages %}<div class="mb-6 space-y-2">{% for message in messages %}<div class="rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm">{{ message }}</div>{% endfor %}</div>{% endif %}
+    <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div><h1 class="text-3xl font-extrabold">Classes & attendance</h1><p class="mt-1 text-sm text-gray-400">Manage your schedule, reservations, member attendance, and employee shifts.</p></div>
+      <a href="{% url 'admin_panel:session_create' %}" class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold hover:bg-indigo-500">+ Create a class or session</a>
+    </div>
+
+    <section class="mt-7 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5"><p class="text-sm text-gray-400">Upcoming sessions</p><p class="mt-2 text-3xl font-bold">{{ upcoming_count }}</p></div>
+      <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5"><p class="text-sm text-gray-400">Booked places</p><p class="mt-2 text-3xl font-bold">{{ booked_count }}</p></div>
+      <div class="rounded-2xl border border-gray-800 bg-gray-900 p-5"><p class="text-sm text-gray-400">Open staff shifts</p><p class="mt-2 text-3xl font-bold">{{ open_shifts_count }}</p></div>
+    </section>
+
+    <section class="mt-9">
+      <div class="mb-3 flex items-center justify-between"><h2 class="text-xl font-bold">Schedule</h2><span class="text-xs text-gray-500">Latest 100 sessions</span></div>
+      <div class="overflow-x-auto rounded-2xl border border-gray-800">
+        <table class="w-full min-w-[780px] text-left text-sm">
+          <thead class="bg-gray-900 text-xs uppercase tracking-wide text-gray-400"><tr><th class="px-4 py-3">Session</th><th class="px-4 py-3">Date & time</th><th class="px-4 py-3">Instructor</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Actions</th></tr></thead>
+          <tbody class="divide-y divide-gray-800 bg-gray-950">
+          {% for session in sessions %}
+            <tr>
+              <td class="px-4 py-3"><p class="font-semibold">{{ session.title }}</p><p class="text-xs text-gray-500">{{ session.get_session_type_display }}{% if session.capacity %} · {{ session.capacity }} seats{% endif %}</p></td>
+              <td class="px-4 py-3 text-gray-300">{{ session.starts_at|date:"D, M j · Y H:i" }}<br><span class="text-xs text-gray-500">Ends {{ session.ends_at|date:"H:i" }}</span></td>
+              <td class="px-4 py-3 text-gray-300">{{ session.instructor.full_name|default:"—" }}</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-gray-800 px-2.5 py-1 text-xs">{{ session.get_status_display }}</span></td>
+              <td class="px-4 py-3"><div class="flex flex-wrap items-center gap-2"><a class="text-indigo-300 hover:text-white" href="{% url 'admin_panel:session_edit' session.id %}">Edit</a>
+                {% if session.status == "scheduled" %}<form method="post" action="{% url 'admin_panel:session_status' session.id %}">{% csrf_token %}<input type="hidden" name="status" value="cancelled"><button class="text-rose-300 hover:text-white">Cancel</button></form>{% elif session.status == "cancelled" %}<form method="post" action="{% url 'admin_panel:session_status' session.id %}">{% csrf_token %}<input type="hidden" name="status" value="scheduled"><button class="text-emerald-300 hover:text-white">Reopen</button></form>{% endif %}
+              </div></td>
+            </tr>
+          {% empty %}<tr><td colspan="5" class="px-4 py-10 text-center text-gray-400">No sessions yet. Create the first one to open your schedule.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="mt-9 grid gap-8 xl:grid-cols-2">
+      <section>
+        <div class="mb-3 flex items-center justify-between"><h2 class="text-xl font-bold">Member attendance & bookings</h2><span class="text-xs text-gray-500">Latest 50</span></div>
+        <div class="overflow-x-auto rounded-2xl border border-gray-800"><table class="w-full min-w-[560px] text-left text-sm">
+          <thead class="bg-gray-900 text-xs uppercase tracking-wide text-gray-400"><tr><th class="px-4 py-3">Member</th><th class="px-4 py-3">Session</th><th class="px-4 py-3">Booking</th><th class="px-4 py-3">Attendance</th></tr></thead>
+          <tbody class="divide-y divide-gray-800 bg-gray-950">{% for booking in bookings %}<tr><td class="px-4 py-3">{{ booking.member.full_name }}</td><td class="px-4 py-3">{{ booking.session.title }}<br><span class="text-xs text-gray-500">{{ booking.session.starts_at|date:"M j, H:i" }}</span></td><td class="px-4 py-3">{{ booking.get_status_display }}</td><td class="px-4 py-3">{% if booking.checked_in_at %}<span class="text-emerald-300">{{ booking.checked_in_at|date:"H:i" }}</span>{% if booking.check_in_distance_meters != None %}<span class="block text-xs text-gray-500">{{ booking.check_in_distance_meters }} m from site</span>{% endif %}{% else %}<span class="text-gray-500">Not checked in</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="4" class="px-4 py-8 text-center text-gray-400">No member bookings yet.</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </section>
+      <section>
+        <div class="mb-3 flex items-center justify-between"><h2 class="text-xl font-bold">Employee shifts</h2><span class="text-xs text-gray-500">Latest 50</span></div>
+        <div class="overflow-x-auto rounded-2xl border border-gray-800"><table class="w-full min-w-[480px] text-left text-sm">
+          <thead class="bg-gray-900 text-xs uppercase tracking-wide text-gray-400"><tr><th class="px-4 py-3">Employee</th><th class="px-4 py-3">Clock in</th><th class="px-4 py-3">Clock out</th><th class="px-4 py-3">Distance</th></tr></thead>
+          <tbody class="divide-y divide-gray-800 bg-gray-950">{% for shift in shifts %}<tr><td class="px-4 py-3">{{ shift.employee.full_name }}</td><td class="px-4 py-3">{{ shift.checked_in_at|date:"M j, H:i" }}</td><td class="px-4 py-3">{% if shift.checked_out_at %}{{ shift.checked_out_at|date:"M j, H:i" }}{% else %}<span class="text-emerald-300">On shift</span>{% endif %}</td><td class="px-4 py-3 text-gray-400">{% if shift.check_in_distance_meters != None %}{{ shift.check_in_distance_meters }} m{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="4" class="px-4 py-8 text-center text-gray-400">No employee shifts yet.</td></tr>{% endfor %}</tbody>
+        </table></div>
+      </section>
+    </div>
+  </main>
+</div>
+{% endblock %}

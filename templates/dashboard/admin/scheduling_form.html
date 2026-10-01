@@ -1,0 +1,33 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ page_title }} — {{ PLATFORM_NAME }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 pb-16 text-gray-100">
+  {% include "dashboard/admin/_nav.html" %}
+  <main class="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+    <a href="{% url 'admin_panel:schedule_attendance' %}" class="text-sm text-indigo-300 hover:text-white">← Classes & attendance</a>
+    <h1 class="mt-4 text-3xl font-bold">{{ page_title }}</h1>
+    <p class="mt-2 text-sm text-gray-400">Set up an in-person, live online, hybrid, or appointment session. Location coordinates are used only when a location check is required.</p>
+    <form method="post" class="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-5 sm:p-7">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="mb-5 rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="grid gap-5 sm:grid-cols-2">
+      {% for field in form %}
+        <div class="{% if field.name == 'description' or field.name == 'address' %}sm:col-span-2{% endif %}">
+          {% if field.field.widget.input_type == "checkbox" %}<label class="flex items-center gap-3 text-sm font-medium"><span>{{ field }}</span>{{ field.label }}</label>
+          {% else %}<label for="{{ field.id_for_label }}" class="mb-1.5 block text-sm font-medium text-gray-200">{{ field.label }}</label>{{ field }}{% endif %}
+          {% if field.help_text %}<p class="mt-1 text-xs text-gray-500">{{ field.help_text }}</p>{% endif %}
+          {% for error in field.errors %}<p class="mt-1 text-xs text-rose-300">{{ error }}</p>{% endfor %}
+        </div>
+      {% endfor %}
+      </div>
+      <div class="mt-7 flex flex-wrap gap-3"><button class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-bold hover:bg-indigo-500">Save session</button><a href="{% url 'admin_panel:schedule_attendance' %}" class="rounded-lg border border-gray-700 px-5 py-2.5 text-sm hover:bg-gray-800">Cancel</a></div>
+    </form>
+  </main>
+</div>
+<style>
+form input:not([type=checkbox]), form select, form textarea { width:100%; border:1px solid var(--portal-border); border-radius:.65rem; background:var(--portal-surface); color:var(--portal-text); padding:.65rem .8rem; }
+form input[type=checkbox] { height:1rem; width:1rem; accent-color:var(--portal-primary); }
+</style>
+{% endblock %}

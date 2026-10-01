@@ -11,9 +11,11 @@ logger = logging.getLogger("apps.notifications")
 
 def _branding():
     from apps.common.models import get_platform_settings
+    from apps.common.theme import get_portal_colors
 
     settings_record = get_platform_settings()
     if isinstance(settings_record, dict):
+        settings_record = {**settings_record, "portal_colors": get_portal_colors(settings_record)}
         return settings_record
     try:
         logo_url = settings_record.logo.url if settings_record.logo else ""
@@ -23,6 +25,7 @@ def _branding():
         "name": settings_record.name,
         "website_url": settings_record.website_url,
         "logo_url": logo_url,
+        "portal_colors": get_portal_colors(settings_record),
     }
 
 
@@ -49,6 +52,7 @@ def send_verification_email(self, user_id: str):
             "verify_url": verify_url,
             "platform_name": platform_name,
             "platform_logo_url": branding.get("logo_url", ""),
+            "portal_colors": branding["portal_colors"],
         })
         send_mail(
             subject=f"Verify your email — {platform_name}",
@@ -78,6 +82,7 @@ def send_password_reset_email(self, token_id: str):
             "reset_url": reset_url,
             "platform_name": platform_name,
             "platform_logo_url": branding.get("logo_url", ""),
+            "portal_colors": branding["portal_colors"],
         })
         send_mail(
             subject=f"Password Reset — {platform_name}",
@@ -106,6 +111,7 @@ def send_enrollment_email(self, order_id: str):
             "order": order,
             "platform_name": platform_name,
             "platform_logo_url": branding.get("logo_url", ""),
+            "portal_colors": branding["portal_colors"],
             "platform_url": branding.get("website_url") or settings.PLATFORM_URL,
         })
         send_mail(

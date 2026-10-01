@@ -62,13 +62,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the repository-specific app map, requ
 
 ### Configure website identity and invoices
 
-After creating a Django superuser and applying migrations, open `/django-admin/` and choose **Common → Platform settings**. Configure the public name, tagline, logo, favicon, theme color, support contact, legal business name, billing address, tax registration number, and invoice footer. The values apply to shared site branding, account pages, payment checkout labels, notification email names, and newly generated invoices. Existing invoices remain historical documents.
+After creating a Django superuser and applying migrations, open `/django-admin/` and choose **Common → Platform settings**. Configure the public name, tagline, logo, favicon, portal color palette, support contact, legal business name, billing address, tax registration number, and invoice footer. Portal colors include primary and accent colors, page/surface/text/border colors, semantic status colors, and a separate invoice palette. They apply throughout shared website templates and dashboards, account pages, payment checkout, notification emails, and newly generated invoices. Existing invoices remain historical documents.
 
 The logo and favicon are stored using Django's configured media storage. The production Nginx configuration serves only `/media/branding/` publicly; keep the general media directory private and use the protected storage flow for course content.
 
 ### Classes, memberships, and attendance
 
-The **Classes, bookings and attendance** area in Django Admin manages live online, in-person, hybrid, and appointment sessions, instructors, capacities, waitlists, and attendance. Members can book at `/sessions/`; employees use `/staff/attendance/` to clock in and out. The staff role is assigned to an account by an administrator. Existing teachers can also use the employee time clock.
+The custom admin console's **Classes & attendance** page manages live online, in-person, hybrid, and appointment sessions, instructors, capacities, waitlists, and attendance. Members can book at `/sessions/`; employees use `/staff/attendance/` to clock in and out. The staff role is assigned to an account by an administrator. Existing teachers can also use the employee time clock. Platform-wide business and geofence settings remain under Django Admin → Common → Platform settings.
 
 For a dance studio, gym, fitness business, or workshop provider, set the business type and terms in Platform Settings, add the desired site coordinates, choose the allowed geofence radius and location accuracy, then enable staff and/or member location checks. Each scheduled session can override the site coordinates/radius and can optionally require a linked paid course enrollment or active membership. Membership plans and member memberships are currently managed by staff in Django Admin; membership checkout and recurring billing are not connected to the payment gateway yet.
 

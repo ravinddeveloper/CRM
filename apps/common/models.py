@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
 
+HEX_COLOR_VALIDATOR = RegexValidator(r"^#[0-9A-Fa-f]{6}$", "Enter a six-digit hex color such as #4f46e5.")
+
 
 class TimeStampedModel(models.Model):
     """Abstract base model with created_at and updated_at timestamps."""
@@ -71,8 +73,25 @@ class PlatformSettings(models.Model):
     primary_color = models.CharField(
         max_length=7,
         default="#4f46e5",
-        validators=[RegexValidator(r"^#[0-9A-Fa-f]{6}$", "Enter a six-digit hex color such as #4f46e5.")],
+        validators=[HEX_COLOR_VALIDATOR],
     )
+    accent_color = models.CharField(max_length=7, default="#7c3aed", validators=[HEX_COLOR_VALIDATOR])
+    background_color = models.CharField(max_length=7, default="#030712", validators=[HEX_COLOR_VALIDATOR])
+    surface_color = models.CharField(max_length=7, default="#111827", validators=[HEX_COLOR_VALIDATOR])
+    raised_surface_color = models.CharField(max_length=7, default="#1f2937", validators=[HEX_COLOR_VALIDATOR])
+    text_color = models.CharField(max_length=7, default="#f9fafb", validators=[HEX_COLOR_VALIDATOR])
+    muted_text_color = models.CharField(max_length=7, default="#9ca3af", validators=[HEX_COLOR_VALIDATOR])
+    border_color = models.CharField(max_length=7, default="#374151", validators=[HEX_COLOR_VALIDATOR])
+    inverse_text_color = models.CharField(max_length=7, default="#ffffff", validators=[HEX_COLOR_VALIDATOR])
+    success_color = models.CharField(max_length=7, default="#10b981", validators=[HEX_COLOR_VALIDATOR])
+    warning_color = models.CharField(max_length=7, default="#f59e0b", validators=[HEX_COLOR_VALIDATOR])
+    error_color = models.CharField(max_length=7, default="#ef4444", validators=[HEX_COLOR_VALIDATOR])
+    info_color = models.CharField(max_length=7, default="#3b82f6", validators=[HEX_COLOR_VALIDATOR])
+    invoice_background_color = models.CharField(max_length=7, default="#ffffff", validators=[HEX_COLOR_VALIDATOR])
+    invoice_surface_color = models.CharField(max_length=7, default="#f8fafc", validators=[HEX_COLOR_VALIDATOR])
+    invoice_text_color = models.CharField(max_length=7, default="#1e293b", validators=[HEX_COLOR_VALIDATOR])
+    invoice_muted_text_color = models.CharField(max_length=7, default="#64748b", validators=[HEX_COLOR_VALIDATOR])
+    invoice_border_color = models.CharField(max_length=7, default="#e2e8f0", validators=[HEX_COLOR_VALIDATOR])
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -130,6 +149,18 @@ def get_platform_settings():
             "tax_registration_number": "",
             "invoice_footer": "",
             "primary_color": "#4f46e5",
+            "accent_color": "#7c3aed",
+            "background_color": "#030712",
+            "surface_color": "#111827",
+            "raised_surface_color": "#1f2937",
+            "text_color": "#f9fafb",
+            "muted_text_color": "#9ca3af",
+            "border_color": "#374151",
+            "inverse_text_color": "#ffffff",
+            "success_color": "#10b981",
+            "warning_color": "#f59e0b",
+            "error_color": "#ef4444",
+            "info_color": "#3b82f6",
             "business_type": BusinessType.LEARNING,
             "member_label": "Student",
             "staff_label": "Teacher",

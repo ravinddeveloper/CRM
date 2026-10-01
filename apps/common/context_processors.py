@@ -2,6 +2,7 @@
 from django.conf import settings
 
 from .models import get_platform_settings
+from .theme import build_portal_theme_css, get_portal_colors
 
 
 def global_context(request):
@@ -15,6 +16,7 @@ def global_context(request):
 
     logo = value("logo")
     favicon = value("favicon")
+    palette = get_portal_colors(branding)
 
     def file_url(field):
         try:
@@ -27,7 +29,9 @@ def global_context(request):
         "PLATFORM_TAGLINE": value("tagline"),
         "PLATFORM_LOGO_URL": file_url(logo),
         "PLATFORM_FAVICON_URL": file_url(favicon),
-        "PLATFORM_PRIMARY_COLOR": value("primary_color", "#4f46e5"),
+        "PLATFORM_PRIMARY_COLOR": palette["primary"],
+        "PORTAL_COLORS": palette,
+        "PORTAL_THEME_CSS": build_portal_theme_css(palette),
         "PLATFORM_URL": value("website_url", getattr(settings, "PLATFORM_URL", "")),
         "SUPPORT_EMAIL": value("support_email", getattr(settings, "SUPPORT_EMAIL", "")),
         "BUSINESS_TYPE": value("business_type", "learning"),

@@ -54,7 +54,7 @@ Browser geolocation is device-reported and can be spoofed. The server validates 
 
 ### Platform identity and invoices
 
-`PlatformSettings` is a singleton editable in Django Admin under **Common → Platform settings**. The shared context processor supplies its public branding to website templates. Invoice HTML and PDF generation read the same record. Environment values in `config/settings/base.py` provide defaults before the record is configured.
+`PlatformSettings` is a singleton editable in Django Admin under **Common → Platform settings**. The shared context processor supplies its public branding and validated color palette to website templates. The palette centralizes primary/accent, page and surface, text and border, semantic status, and invoice colors; shared CSS maps the existing utility classes to the configured values. Email templates and both invoice renderers read the same settings record. Environment values in `config/settings/base.py` provide defaults before the record is configured.
 
 ## Data ownership
 
