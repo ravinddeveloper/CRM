@@ -15,16 +15,16 @@
 </head>
 <body>
   <div class="card">
-    <div class="logo">{{ platform_name|default:"EduFlow LMS" }}</div>
+    <div class="logo">{% if platform_logo_url %}<img src="{{ platform_logo_url }}" alt="{{ platform_name }}" style="max-width:220px;max-height:64px">{% else %}{{ platform_name|default:"LearnPro" }}{% endif %}</div>
     <h1>Verify Your Email Address</h1>
     <p>Hi {{ user.first_name|default:user.username }},</p>
-    <p>Thank you for registering on {{ platform_name|default:"EduFlow LMS" }}. Please click the button below to verify your email address and activate your student account.</p>
+    <p>Thank you for registering on {{ platform_name|default:"LearnPro" }}. Please click the button below to verify your email address and activate your student account.</p>
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{ verify_url }}" class="btn" target="_blank">Verify Email Address</a>
     </div>
     <p style="font-size: 12px; color: #6b7280;">If you didn't create an account, you can safely ignore this email. The verification link will expire in 24 hours.</p>
     <div class="footer">
-      &copy; {{ platform_name|default:"EduFlow LMS" }}. All rights reserved.
+      &copy; {{ platform_name|default:"LearnPro" }}. All rights reserved.
     </div>
   </div>
 </body>

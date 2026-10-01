@@ -7,19 +7,20 @@ A secure, scalable, enterprise-grade learning management platform built with Dja
 ## Table of Contents
 
 1. [Architectural Overview](#architectural-overview)
-2. [Technology Stack](#technology-stack)
-3. [User Roles & Permissions](#user-roles--permissions)
-4. [Security Architecture](#security-architecture)
-5. [Storage Abstraction (MinIO / AWS S3 / Azure)](#storage-abstraction)
-6. [Payment Processing & Webhook Idempotency](#payment-processing)
-7. [Student Learning Interface & Progress Tracking](#student-learning-interface)
-8. [Local Development Setup](#local-development-setup)
-9. [Running Celery & Background Jobs](#running-celery)
-10. [Management Commands & Seeding Demo Data](#management-commands)
-11. [Running the Automated Test Suite](#running-the-automated-test-suite)
-12. [Docker & Production Deployment](#docker--production-deployment)
-13. [API Documentation](#api-documentation)
-14. [Backup & Maintenance Recommendations](#backup--maintenance-recommendations)
+2. [Project Architecture Guide](#project-architecture-guide)
+3. [Technology Stack](#technology-stack)
+4. [User Roles & Permissions](#user-roles--permissions)
+5. [Security Architecture](#security-architecture)
+6. [Storage Abstraction (MinIO / AWS S3 / Azure)](#storage-abstraction)
+7. [Payment Processing & Webhook Idempotency](#payment-processing)
+8. [Student Learning Interface & Progress Tracking](#student-learning-interface)
+9. [Local Development Setup](#local-development-setup)
+10. [Running Celery & Background Jobs](#running-celery)
+11. [Management Commands & Seeding Demo Data](#management-commands)
+12. [Running the Automated Test Suite](#running-the-automated-test-suite)
+13. [Docker & Production Deployment](#docker--production-deployment)
+14. [API Documentation](#api-documentation)
+15. [Backup & Maintenance Recommendations](#backup--maintenance-recommendations)
 
 ---
 
@@ -55,7 +56,17 @@ EduFlow LMS adheres to Clean Architecture and Domain-Driven Design principles:
 
 ---
 
-## 2. Technology Stack
+## 2. Project Architecture Guide
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the repository-specific app map, request boundaries, payment-to-enrollment flow, and configuration ownership.
+
+### Configure website identity and invoices
+
+After creating a Django superuser and applying migrations, open `/django-admin/` and choose **Common → Platform settings**. Configure the public name, tagline, logo, favicon, theme color, support contact, legal business name, billing address, tax registration number, and invoice footer. The values apply to shared site branding, account pages, payment checkout labels, notification email names, and newly generated invoices. Existing invoices remain historical documents.
+
+The logo and favicon are stored using Django's configured media storage. The production Nginx configuration serves only `/media/branding/` publicly; keep the general media directory private and use the protected storage flow for course content.
+
+## 3. Technology Stack
 
 - **Backend**: Python 3.12+, Django 5.x / 6.x, Django REST Framework (DRF), `drf-spectacular` (OpenAPI 3.0)
 - **Database**: PostgreSQL 15+ (production) / SQLite (isolated testing)
@@ -67,7 +78,7 @@ EduFlow LMS adheres to Clean Architecture and Domain-Driven Design principles:
 
 ---
 
-## 3. User Roles & Permissions
+## 4. User Roles & Permissions
 
 1. **Admin**:
    - Access to both the custom Admin Console (`/dashboard/admin/`) and Django Admin (`/django-admin/`).
@@ -219,7 +230,7 @@ celery -A config.celery beat --loglevel=info --scheduler django_celery_beat.sche
 
 ## 11. Running the Automated Test Suite
 
-EduFlow LMS includes automated unit, security, integration, and API test suites with 100% pass rate:
+Automated unit, security, integration, and API test suites are located under `tests/`. Run them in the configured test environment to check the current project state:
 
 ```bash
 # Run complete test suite

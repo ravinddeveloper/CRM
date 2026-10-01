@@ -1,6 +1,6 @@
 {% extends "base/base.html" %}
 
-{% block title %}Order Summary & Checkout — {{ course.title }} — EduFlow LMS{% endblock %}
+{% block title %}Order Summary & Checkout — {{ course.title }} — {{ PLATFORM_NAME }}{% endblock %}
 
 {% block body %}
 <div class="min-h-screen bg-gray-950 text-gray-100 py-12">
@@ -287,7 +287,7 @@ document.addEventListener("DOMContentLoaded", function () {
           key: checkoutData.keyId,
           amount: Math.round(parseFloat(checkoutData.amount) * 100),
           currency: checkoutData.currency,
-          name: "EduFlow LMS",
+          name: "{{ PLATFORM_NAME }}",
           description: "Course Enrollment: {{ course.title }}",
           order_id: checkoutData.providerOrderId,
           prefill: {

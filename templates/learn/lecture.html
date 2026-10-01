@@ -1,6 +1,6 @@
 {% extends "base/base.html" %}
 
-{% block title %}{{ lecture.title }} — {{ course.title }} — EduFlow LMS{% endblock %}
+{% block title %}{{ lecture.title }} — {{ course.title }} — {{ PLATFORM_NAME }}{% endblock %}
 
 {% block body %}
 <div class="min-h-screen bg-gray-950 text-gray-100 flex flex-col" x-data="learnInterface()">

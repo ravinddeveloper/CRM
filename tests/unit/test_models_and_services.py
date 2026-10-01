@@ -369,11 +369,48 @@ class TestStorageService(TestCase):
     def test_get_presigned_url_returns_string(self):
         """StorageService.get_presigned_url should return a non-empty URL string."""
         from apps.storage.service import StorageService
-        # This uses local storage in test mode, which should not fail
-        try:
-            url = StorageService.get_presigned_url("test/file.mp4", expires_in=300)
-            self.assertIsInstance(url, str)
-            self.assertTrue(len(url) > 0)
-        except Exception:
-            # In test environment without MinIO, just verify the method exists
-            self.assertTrue(hasattr(StorageService, "get_presigned_url"))
+        url = StorageService.get_presigned_url("test/file.mp4", expires_in=300)
+        self.assertIsInstance(url, str)
+        self.assertTrue(len(url) > 0)
+
+    def test_storage_service_upload_exists_delete_cycle(self):
+        """Test file upload, file_exists, get_file_size, and delete_file."""
+        import io
+        from apps.storage.service import StorageService
+
+        key = "test_dir/sample_test_file.txt"
+        content = b"Storage test data payload."
+        file_obj = io.BytesIO(content)
+
+        # Upload
+        uploaded_key = StorageService.upload_file(key, file_obj, "text/plain")
+        self.assertEqual(uploaded_key, key)
+
+        # Exists
+        self.assertTrue(StorageService.file_exists(key))
+
+        # Size
+        self.assertEqual(StorageService.get_file_size(key), len(content))
+
+        # Delete
+        StorageService.delete_file(key)
+        self.assertFalse(StorageService.file_exists(key))
+
+    def test_build_key(self):
+        """Test build_key generates formatted unique path."""
+        from apps.storage.service import StorageService
+        key = StorageService.build_key("courses/videos", "sample.mp4")
+        self.assertTrue(key.startswith("courses/videos/"))
+        self.assertTrue(key.endswith(".mp4"))
+
+    def test_safe_filename(self):
+        """Test safe_filename sanitizes filenames and strips paths."""
+        from apps.storage.service import safe_filename
+        self.assertEqual(safe_filename("simple.txt"), "simple.txt")
+        self.assertEqual(safe_filename("../../../etc/passwd.txt"), "passwd.txt")
+        self.assertNotIn(" ", safe_filename("my file name (1).pdf"))
+
+    def test_azure_module_exists_and_can_be_imported(self):
+        """Ensure apps.storage.azure module exists and defines AzureBlobStorageService."""
+        from apps.storage.azure import AzureBlobStorageService
+        self.assertTrue(issubclass(AzureBlobStorageService, object))

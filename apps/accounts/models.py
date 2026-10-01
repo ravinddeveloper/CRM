@@ -140,9 +140,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_totp_uri(self) -> str:
         """Return otpauth URI for authenticator QR code."""
         import pyotp
+        from apps.common.models import get_platform_settings
+
         secret = self.two_factor_secret or self.generate_totp_secret()
         totp = pyotp.TOTP(secret)
-        return totp.provisioning_uri(name=self.email, issuer_name="EduFlow LMS")
+        branding = get_platform_settings()
+        issuer = branding.get("name", "LearnPro") if isinstance(branding, dict) else branding.name
+        return totp.provisioning_uri(name=self.email, issuer_name=issuer)
 
     def verify_totp(self, code: str) -> bool:
         """Verify a 6-digit TOTP code with 30s window tolerance."""

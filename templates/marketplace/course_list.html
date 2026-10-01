@@ -1,7 +1,7 @@
 {% extends "base/base.html" %}
 {% load static %}
 
-{% block title %}Explore Expert-Led Online Courses — EduFlow LMS{% endblock %}
+{% block title %}Explore Expert-Led Online Courses — {{ PLATFORM_NAME }}{% endblock %}
 {% block meta_description %}Discover top-rated online courses in development, design, business, and more. Learn from industry experts at your own pace.{% endblock %}
 
 {% block body %}
@@ -13,9 +13,9 @@
       <div class="flex items-center justify-between h-16">
         <a href="/" class="flex items-center gap-3 group">
           <div class="w-9 h-9 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <span class="text-white font-extrabold text-base">E</span>
+            {% if PLATFORM_LOGO_URL %}<img src="{{ PLATFORM_LOGO_URL }}" alt="{{ PLATFORM_NAME }}" class="w-full h-full object-contain rounded-xl">{% else %}<span class="text-white font-extrabold text-base">{{ PLATFORM_NAME|first|upper }}</span>{% endif %}
           </div>
-          <span class="font-bold text-xl text-white group-hover:text-brand-400 transition-colors tracking-tight">EduFlow</span>
+          <span class="font-bold text-xl text-white group-hover:text-brand-400 transition-colors tracking-tight">{{ PLATFORM_NAME }}</span>
         </a>
 
         <!-- Global Search Bar (HTMX live search) -->
@@ -313,7 +313,7 @@
   <!-- ── Footer ────────────────────────────────────────────────────────── -->
   <footer class="bg-gray-900 border-t border-gray-800 mt-20 py-12">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-400">
-      <p>© 2026 EduFlow Learning Platform. All rights reserved.</p>
+      <p>© {% now "Y" %} {{ PLATFORM_NAME }}. All rights reserved.</p>
     </div>
   </footer>
 

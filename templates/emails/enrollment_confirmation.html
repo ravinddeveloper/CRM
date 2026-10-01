@@ -16,7 +16,7 @@
 </head>
 <body>
   <div class="card">
-    <div class="logo">{{ platform_name|default:"EduFlow LMS" }}</div>
+    <div class="logo">{% if platform_logo_url %}<img src="{{ platform_logo_url }}" alt="{{ platform_name }}" style="max-width:220px;max-height:64px">{% else %}{{ platform_name|default:"LearnPro" }}{% endif %}</div>
     <h1>Enrollment Confirmed!</h1>
     <p>Hi {{ user.first_name|default:user.username }},</p>
     <p>Your payment was successfully verified and your course enrollment is active. You can now access all lectures, videos, and study notes immediately.</p>
@@ -38,7 +38,7 @@
     </div>
 
     <div class="footer">
-      &copy; {{ platform_name|default:"EduFlow LMS" }}. All rights reserved.
+      &copy; {{ platform_name|default:"LearnPro" }}. All rights reserved.
     </div>
   </div>
 </body>

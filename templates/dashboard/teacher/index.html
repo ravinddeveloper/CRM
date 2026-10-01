@@ -1,6 +1,6 @@
 {% extends "base/base.html" %}
 
-{% block title %}Teacher Console — EduFlow LMS{% endblock %}
+{% block title %}Teacher Console — {{ PLATFORM_NAME }}{% endblock %}
 
 {% block body %}
 <div class="min-h-screen bg-gray-950 text-gray-100">
@@ -11,8 +11,8 @@
       <div class="flex items-center justify-between h-16">
         <div class="flex items-center gap-6">
           <a href="/" class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white text-sm">E</div>
-            <span class="font-bold text-lg text-white">EduFlow Instructor</span>
+            <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center font-bold text-white text-sm">{% if PLATFORM_LOGO_URL %}<img src="{{ PLATFORM_LOGO_URL }}" alt="{{ PLATFORM_NAME }}" class="w-full h-full object-contain rounded-lg">{% else %}{{ PLATFORM_NAME|first|upper }}{% endif %}</div>
+            <span class="font-bold text-lg text-white">{{ PLATFORM_NAME }} Instructor</span>
           </a>
           <div class="hidden md:flex items-center gap-2">
             <a href="{% url 'teacher:dashboard' %}" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 text-white">Overview</a>

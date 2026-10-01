@@ -9,6 +9,23 @@ from django.template.loader import render_to_string
 logger = logging.getLogger("apps.notifications")
 
 
+def _branding():
+    from apps.common.models import get_platform_settings
+
+    settings_record = get_platform_settings()
+    if isinstance(settings_record, dict):
+        return settings_record
+    try:
+        logo_url = settings_record.logo.url if settings_record.logo else ""
+    except (ValueError, OSError):
+        logo_url = ""
+    return {
+        "name": settings_record.name,
+        "website_url": settings_record.website_url,
+        "logo_url": logo_url,
+    }
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_verification_email(self, user_id: str):
     """Send email verification link to user."""
@@ -24,14 +41,17 @@ def send_verification_email(self, user_id: str):
         if not token:
             return
 
-        verify_url = f"{settings.PLATFORM_URL}/accounts/verify-email/{token.token}/"
+        branding = _branding()
+        platform_name = branding["name"]
+        verify_url = f"{branding.get('website_url') or settings.PLATFORM_URL}/accounts/verify-email/{token.token}/"
         html = render_to_string("emails/verify_email.html", {
             "user": user,
             "verify_url": verify_url,
-            "platform_name": settings.PLATFORM_NAME,
+            "platform_name": platform_name,
+            "platform_logo_url": branding.get("logo_url", ""),
         })
         send_mail(
-            subject=f"Verify your email — {settings.PLATFORM_NAME}",
+            subject=f"Verify your email — {platform_name}",
             message=f"Click to verify: {verify_url}",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
@@ -50,14 +70,17 @@ def send_password_reset_email(self, token_id: str):
     try:
         from apps.accounts.models import PasswordResetToken
         token = PasswordResetToken.objects.select_related("user").get(id=token_id)
-        reset_url = f"{settings.PLATFORM_URL}/accounts/reset-password/{token.token}/"
+        branding = _branding()
+        platform_name = branding["name"]
+        reset_url = f"{branding.get('website_url') or settings.PLATFORM_URL}/accounts/reset-password/{token.token}/"
         html = render_to_string("emails/password_reset.html", {
             "user": token.user,
             "reset_url": reset_url,
-            "platform_name": settings.PLATFORM_NAME,
+            "platform_name": platform_name,
+            "platform_logo_url": branding.get("logo_url", ""),
         })
         send_mail(
-            subject=f"Password Reset — {settings.PLATFORM_NAME}",
+            subject=f"Password Reset — {platform_name}",
             message=f"Reset your password: {reset_url}",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[token.user.email],
@@ -76,14 +99,17 @@ def send_enrollment_email(self, order_id: str):
     try:
         from apps.orders.models import Order
         order = Order.objects.select_related("user").prefetch_related("items__course").get(id=order_id)
+        branding = _branding()
+        platform_name = branding["name"]
         html = render_to_string("emails/enrollment_confirmation.html", {
             "user": order.user,
             "order": order,
-            "platform_name": settings.PLATFORM_NAME,
-            "platform_url": settings.PLATFORM_URL,
+            "platform_name": platform_name,
+            "platform_logo_url": branding.get("logo_url", ""),
+            "platform_url": branding.get("website_url") or settings.PLATFORM_URL,
         })
         send_mail(
-            subject=f"You're enrolled! — {settings.PLATFORM_NAME}",
+            subject=f"You're enrolled! — {platform_name}",
             message=f"Order #{order.order_number} confirmed.",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[order.user.email],

@@ -1,7 +1,7 @@
 {% extends "base/base.html" %}
 {% load static %}
 
-{% block title %}My Dashboard – EduFlow{% endblock %}
+{% block title %}My Dashboard – {{ PLATFORM_NAME }}{% endblock %}
 {% block meta_description %}Your personal learning dashboard. Track your progress, resume courses, and view certificates.{% endblock %}
 
 {% block body %}
@@ -14,9 +14,9 @@
         <!-- Logo -->
         <a href="/" class="flex items-center gap-2 group">
           <div class="w-8 h-8 bg-gradient-to-br from-brand-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span class="text-white font-bold text-sm">E</span>
+            {% if PLATFORM_LOGO_URL %}<img src="{{ PLATFORM_LOGO_URL }}" alt="{{ PLATFORM_NAME }}" class="w-full h-full object-contain rounded-lg">{% else %}<span class="text-white font-bold text-sm">{{ PLATFORM_NAME|first|upper }}</span>{% endif %}
           </div>
-          <span class="font-bold text-xl text-white group-hover:text-brand-400 transition-colors">EduFlow</span>
+          <span class="font-bold text-xl text-white group-hover:text-brand-400 transition-colors">{{ PLATFORM_NAME }}</span>
         </a>
 
         <!-- Nav links (desktop) -->

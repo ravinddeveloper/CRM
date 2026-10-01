@@ -43,6 +43,10 @@ class BaseStorageService(ABC):
         """Return file size in bytes."""
         ...
 
+    def get_presigned_url(self, key: str, expires_in: int = 3600) -> str:
+        """Convenience alias for generate_signed_url."""
+        return self.generate_signed_url(key, expiry_seconds=expires_in)
+
     def build_key(self, prefix: str, filename: str) -> str:
         """Build a storage key from prefix and filename."""
         import os

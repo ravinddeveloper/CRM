@@ -56,9 +56,33 @@ class StorageService:
         return f"/media/{storage_key}?expires={expires_in}"
 
     @classmethod
-    def upload_file(cls, key: str, file_obj, content_type: str = "application/octet-stream") -> str:
+    def generate_signed_url(
+        cls,
+        key: str,
+        expiry_seconds: int = 3600,
+        response_content_type: str | None = None,
+        download_filename: str | None = None,
+    ) -> str:
         svc = get_storage_service()
-        return svc.upload_file(key, file_obj, content_type)
+        if hasattr(svc, "generate_signed_url"):
+            return svc.generate_signed_url(
+                key=key,
+                expiry_seconds=expiry_seconds,
+                response_content_type=response_content_type,
+                download_filename=download_filename,
+            )
+        return cls.get_presigned_url(key, expires_in=expiry_seconds)
+
+    @classmethod
+    def upload_file(
+        cls,
+        key: str,
+        file_obj,
+        content_type: str = "application/octet-stream",
+        metadata: dict | None = None,
+    ) -> str:
+        svc = get_storage_service()
+        return svc.upload_file(key, file_obj, content_type, metadata=metadata)
 
     @classmethod
     def delete_file(cls, key: str) -> None:
@@ -70,20 +94,35 @@ class StorageService:
         svc = get_storage_service()
         return svc.file_exists(key)
 
+    @classmethod
+    def get_file_size(cls, key: str) -> int:
+        svc = get_storage_service()
+        return svc.get_file_size(key)
+
+    @classmethod
+    def build_key(cls, prefix: str, filename: str) -> str:
+        svc = get_storage_service()
+        return svc.build_key(prefix, filename)
+
 
 # File validation utilities
 def validate_video_file(file_obj) -> tuple[bool, str]:
     """Validate an uploaded video file."""
+    import os
+
     allowed_types = getattr(settings, "ALLOWED_VIDEO_TYPES", [
         "video/mp4", "video/webm", "video/ogg", "video/quicktime"
     ])
+    allowed_extensions = {".mp4", ".webm", ".ogg", ".mov", ".mkv", ".m4v"}
     max_size_mb = getattr(settings, "MAX_VIDEO_SIZE_MB", 2048)
 
     content_type = getattr(file_obj, "content_type", "")
-    if content_type not in allowed_types:
-        return False, f"Video type '{content_type}' is not allowed. Allowed: {', '.join(allowed_types)}"
+    _, ext = os.path.splitext(getattr(file_obj, "name", "").lower())
 
-    size_mb = file_obj.size / (1024 * 1024)
+    if content_type not in allowed_types and ext not in allowed_extensions:
+        return False, f"Video type '{content_type or ext}' is not allowed. Allowed: {', '.join(allowed_types)}"
+
+    size_mb = getattr(file_obj, "size", 0) / (1024 * 1024)
     if size_mb > max_size_mb:
         return False, f"File is too large ({size_mb:.1f}MB). Maximum: {max_size_mb}MB"
 
@@ -125,7 +164,7 @@ def validate_document_file(file_obj) -> tuple[bool, str]:
     if content_type not in allowed_types and ext not in allowed_extensions:
         return False, f"File format '{ext or content_type}' is not supported. Allowed formats: PDF, Word, PowerPoint, Text, Markdown, ZIP archives, and Images."
 
-    size_mb = file_obj.size / (1024 * 1024)
+    size_mb = getattr(file_obj, "size", 0) / (1024 * 1024)
     if size_mb > max_size_mb:
         return False, f"File is too large ({size_mb:.1f}MB). Maximum: {max_size_mb}MB"
 
@@ -136,8 +175,10 @@ def safe_filename(filename: str) -> str:
     """Sanitize an uploaded filename."""
     import os
     import re
+    # Strip directory components to avoid path traversal
+    clean_name = os.path.basename(filename)
     # Get extension
-    name, ext = os.path.splitext(filename)
+    name, ext = os.path.splitext(clean_name)
     # Remove unsafe characters
     name = re.sub(r"[^\w\-_.]", "_", name)[:100]
     ext = re.sub(r"[^\w.]", "", ext)[:10]

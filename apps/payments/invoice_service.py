@@ -1,9 +1,12 @@
 """Invoice PDF generation service."""
 import io
 import logging
+from xml.sax.saxutils import escape
 
 from django.conf import settings
 from django.template.loader import render_to_string
+
+from apps.common.models import get_platform_settings
 
 logger = logging.getLogger("payments")
 
@@ -42,13 +45,21 @@ class InvoiceService:
         """Try WeasyPrint first; fallback to ReportLab."""
         try:
             from weasyprint import HTML
+            branding = get_platform_settings()
+            logo = branding.get("logo") if isinstance(branding, dict) else branding.logo
+            website_url = branding.get("website_url") if isinstance(branding, dict) else branding.website_url
             html_content = render_to_string("payments/invoice_pdf.html", {
                 "invoice": invoice,
                 "order": invoice.order,
-                "platform_name": getattr(settings, "PLATFORM_NAME", "EduFlow LMS"),
+                "PLATFORM_NAME": branding.get("name") if isinstance(branding, dict) else branding.name,
+                "PLATFORM_LOGO_URL": logo.url if logo else "",
+                "branding": branding,
                 "platform_url": getattr(settings, "PLATFORM_URL", "http://localhost:8000"),
             })
-            return HTML(string=html_content).write_pdf()
+            return HTML(
+                string=html_content,
+                base_url=website_url or getattr(settings, "PLATFORM_URL", "") or None,
+            ).write_pdf()
         except (ImportError, Exception) as exc:
             logger.info("WeasyPrint unavailable (%s), rendering with ReportLab", exc)
             return InvoiceService._generate_with_reportlab(invoice)
@@ -72,7 +83,7 @@ class InvoiceService:
             from reportlab.lib import colors
             from reportlab.lib.pagesizes import letter
             from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-            from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+            from reportlab.platypus import HRFlowable, Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
             buffer = io.BytesIO()
             doc = SimpleDocTemplate(
@@ -86,7 +97,14 @@ class InvoiceService:
 
             styles = getSampleStyleSheet()
 
-            primary_color = colors.HexColor("#4F46E5")
+            branding = get_platform_settings()
+            primary = branding.get("primary_color", "#4f46e5") if isinstance(branding, dict) else branding.primary_color
+            tagline = branding.get("tagline", "") if isinstance(branding, dict) else branding.tagline
+            legal_name = branding.get("legal_name", "") if isinstance(branding, dict) else branding.legal_name
+            billing_address = branding.get("billing_address", "") if isinstance(branding, dict) else branding.billing_address
+            tax_number = branding.get("tax_registration_number", "") if isinstance(branding, dict) else branding.tax_registration_number
+            invoice_footer = branding.get("invoice_footer", "") if isinstance(branding, dict) else branding.invoice_footer
+            primary_color = colors.HexColor(primary if primary.startswith("#") and len(primary) == 7 else "#4F46E5")
             dark_color = colors.HexColor("#0F172A")
             muted_color = colors.HexColor("#64748B")
             light_bg = colors.HexColor("#F8FAFC")
@@ -178,7 +196,7 @@ class InvoiceService:
 
             order = getattr(invoice, "order", None)
             currency = getattr(order, "currency", "INR") if order else getattr(invoice, "currency", "INR")
-            platform_name = getattr(settings, "PLATFORM_NAME", "EduFlow LMS")
+            platform_name = branding.get("name") if isinstance(branding, dict) else branding.name
 
             # Format invoice date
             date_val = getattr(invoice, "issued_at", None) or getattr(invoice, "created_at", None)
@@ -189,10 +207,24 @@ class InvoiceService:
             # 1. Header Row: Platform info & Tax Invoice Title
             header_data = [
                 [
-                    Paragraph(f"<b>{platform_name}</b><br/><font color='#64748B' size='9'>Modern Online Learning Platform</font>", title_style),
+                    Paragraph(f"<b>{escape(platform_name)}</b><br/><font color='#64748B' size='9'>{escape(tagline)}</font>", title_style),
                     Paragraph(f"<b>TAX INVOICE</b><br/><font color='#64748B' size='9'>#{invoice.invoice_number}<br/>Date: {date_str}</font>", invoice_title_style),
                 ]
             ]
+            logo_field = branding.get("logo") if isinstance(branding, dict) else branding.logo
+            if logo_field:
+                try:
+                    with logo_field.open("rb") as logo_file:
+                        logo_image = Image(io.BytesIO(logo_file.read()), width=160, height=56, kind="proportional")
+                    header_data[0][0] = Table([
+                        [logo_image],
+                        [Paragraph(
+                            f"<b>{escape(platform_name)}</b><br/><font color='#64748B' size='9'>{escape(tagline)}</font>",
+                            title_style,
+                        )],
+                    ], colWidths=[290])
+                except (OSError, ValueError):
+                    pass
             header_table = Table(header_data, colWidths=[300, 232])
             header_table.setStyle(TableStyle([
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -200,6 +232,10 @@ class InvoiceService:
                 ("TOPPADDING", (0, 0), (-1, -1), 0),
             ]))
             elements.append(header_table)
+            company_lines = [value for value in (legal_name, billing_address, f"Tax ID: {tax_number}" if tax_number else "") if value]
+            if company_lines:
+                elements.append(Paragraph("<br/>".join(escape(value) for value in company_lines), body_normal))
+                elements.append(Spacer(1, 8))
             elements.append(Spacer(1, 14))
             elements.append(HRFlowable(width="100%", thickness=2, color=primary_color, spaceAfter=18, spaceBefore=0))
 
@@ -246,7 +282,7 @@ class InvoiceService:
             if order_items:
                 for item in order_items:
                     items_data.append([
-                        Paragraph(f"<b>{item.course_title}</b>", table_cell),
+                        Paragraph(f"<b>{escape(item.course_title)}</b>", table_cell),
                         Paragraph(f"{currency} {item.unit_price:,.2f}", table_cell_right),
                         Paragraph(f"{currency} {item.discount_amount:,.2f}", table_cell_right),
                         Paragraph(f"{currency} {item.final_price:,.2f}", table_cell_right),
@@ -315,7 +351,7 @@ class InvoiceService:
             # 5. Footer Notes
             elements.append(HRFlowable(width="100%", thickness=0.5, color=subtle_border, spaceAfter=15, spaceBefore=0))
             elements.append(Paragraph(
-                f"Thank you for learning with {platform_name}.<br/>"
+                f"{escape(invoice_footer or f'Thank you for learning with {platform_name}.')}<br/>"
                 "This is an official computer-generated tax invoice and requires no physical signature.<br/>"
                 "For inquiries, billing support, or queries, please visit your account dashboard.",
                 footer_style,

@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}EduFlow LMS{% endblock %}</title>
+    <title>{% block title %}{{ PLATFORM_NAME }}{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}A world-class online learning platform.{% endblock %}">
+    {% if PLATFORM_FAVICON_URL %}<link rel="icon" href="{{ PLATFORM_FAVICON_URL }}">{% endif %}
+    <meta name="theme-color" content="{{ PLATFORM_PRIMARY_COLOR }}">
 
     <!-- Tailwind CSS via CDN (swap for compiled build in production) -->
     <script src="https://cdn.tailwindcss.com"></script>

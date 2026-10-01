@@ -283,6 +283,12 @@ S3_SECRET_KEY = config("S3_SECRET_KEY", default="")
 S3_BUCKET_NAME = config("S3_BUCKET_NAME", default="lms-content")
 S3_REGION = config("S3_REGION", default="us-east-1")
 S3_SIGNED_URL_EXPIRY = config("S3_SIGNED_URL_EXPIRY", default=3600, cast=int)  # 1 hour
+AZURE_ACCOUNT_NAME = config("AZURE_ACCOUNT_NAME", default="")
+AZURE_ACCOUNT_KEY = config("AZURE_ACCOUNT_KEY", default="")
+AZURE_CONTAINER = config("AZURE_CONTAINER", default="lms-content")
+AZURE_CONNECTION_STRING = config("AZURE_CONNECTION_STRING", default="")
+AZURE_CUSTOM_DOMAIN = config("AZURE_CUSTOM_DOMAIN", default="")
+AZURE_SIGNED_URL_EXPIRY = config("AZURE_SIGNED_URL_EXPIRY", default=3600, cast=int)
 
 # ---------------------------------------------------------------------------
 # Payment

@@ -17,33 +17,43 @@ class S3StorageService(BaseStorageService):
         from botocore.config import Config
 
         kwargs = dict(
-            aws_access_key_id=settings.S3_ACCESS_KEY,
-            aws_secret_access_key=settings.S3_SECRET_KEY,
-            region_name=settings.S3_REGION,
+            region_name=getattr(settings, "S3_REGION", "us-east-1"),
             config=Config(signature_version="s3v4"),
         )
-        if settings.S3_ENDPOINT_URL:
-            kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+        access_key = getattr(settings, "S3_ACCESS_KEY", None)
+        secret_key = getattr(settings, "S3_SECRET_KEY", None)
+        endpoint_url = getattr(settings, "S3_ENDPOINT_URL", None)
+
+        if access_key:
+            kwargs["aws_access_key_id"] = access_key
+        if secret_key:
+            kwargs["aws_secret_access_key"] = secret_key
+        if endpoint_url:
+            kwargs["endpoint_url"] = endpoint_url
 
         self._client = boto3.client("s3", **kwargs)
-        self._bucket = settings.S3_BUCKET_NAME
+        self._bucket = getattr(settings, "S3_BUCKET_NAME", "lms-content")
 
     def upload_file(self, key: str, file_obj: IO, content_type: str, metadata: dict | None = None) -> str:
+        safe_key = key.lstrip("/")
         extra_args = {"ContentType": content_type}
         if metadata:
             extra_args["Metadata"] = {str(k): str(v) for k, v in metadata.items()}
+
+        if hasattr(file_obj, "seek"):
+            file_obj.seek(0)
 
         try:
             self._client.upload_fileobj(
                 file_obj,
                 self._bucket,
-                key,
+                safe_key,
                 ExtraArgs=extra_args,
             )
-            logger.info("Uploaded file to storage: %s", key)
-            return key
+            logger.info("Uploaded file to storage: %s", safe_key)
+            return safe_key
         except Exception as exc:
-            logger.error("Failed to upload file %s: %s", key, exc)
+            logger.error("Failed to upload file %s: %s", safe_key, exc)
             raise
 
     def generate_signed_url(
@@ -53,9 +63,10 @@ class S3StorageService(BaseStorageService):
         response_content_type: str | None = None,
         download_filename: str | None = None,
     ) -> str:
+        safe_key = key.lstrip("/")
         params = {
             "Bucket": self._bucket,
-            "Key": key,
+            "Key": safe_key,
         }
         if response_content_type:
             params["ResponseContentType"] = response_content_type
@@ -67,27 +78,30 @@ class S3StorageService(BaseStorageService):
             Params=params,
             ExpiresIn=expiry_seconds,
         )
-        logger.debug("Generated signed URL for %s (expires in %ds)", key, expiry_seconds)
+        logger.debug("Generated signed URL for %s (expires in %ds)", safe_key, expiry_seconds)
         return url
 
     def delete_file(self, key: str) -> None:
+        safe_key = key.lstrip("/")
         try:
-            self._client.delete_object(Bucket=self._bucket, Key=key)
-            logger.info("Deleted file from storage: %s", key)
+            self._client.delete_object(Bucket=self._bucket, Key=safe_key)
+            logger.info("Deleted file from storage: %s", safe_key)
         except Exception as exc:
-            logger.error("Failed to delete file %s: %s", key, exc)
+            logger.error("Failed to delete file %s: %s", safe_key, exc)
             raise
 
     def file_exists(self, key: str) -> bool:
+        safe_key = key.lstrip("/")
         try:
-            self._client.head_object(Bucket=self._bucket, Key=key)
+            self._client.head_object(Bucket=self._bucket, Key=safe_key)
             return True
         except Exception:
             return False
 
     def get_file_size(self, key: str) -> int:
+        safe_key = key.lstrip("/")
         try:
-            response = self._client.head_object(Bucket=self._bucket, Key=key)
+            response = self._client.head_object(Bucket=self._bucket, Key=safe_key)
             return response.get("ContentLength", 0)
         except Exception:
             return 0

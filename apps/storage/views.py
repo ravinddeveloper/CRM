@@ -39,12 +39,12 @@ def private_media_view(request):
         return HttpResponseForbidden("Invalid signature token.")
 
     # Resolve safe path within MEDIA_ROOT/private
-    safe_key = key.lstrip("/").replace("..", "")
+    safe_key = key.lstrip("/\\").replace("..", "")
     base_dir = os.path.abspath(os.path.join(str(settings.MEDIA_ROOT), "private"))
     full_path = os.path.abspath(os.path.join(base_dir, safe_key))
 
-    # Path traversal protection
-    if not full_path.startswith(base_dir):
+    # Path traversal protection (normalized for Windows path comparisons)
+    if not os.path.normcase(full_path).startswith(os.path.normcase(base_dir)):
         return HttpResponseForbidden("Access denied.")
 
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
@@ -56,6 +56,12 @@ def private_media_view(request):
         content_type = "application/octet-stream"
 
     filename = os.path.basename(full_path)
+    download_name = request.GET.get("download", "").strip()
+
     response = FileResponse(open(full_path, "rb"), content_type=content_type)
-    response["Content-Disposition"] = f'inline; filename="{filename}"'
+    if download_name:
+        safe_dl = os.path.basename(download_name).replace('"', '')
+        response["Content-Disposition"] = f'attachment; filename="{safe_dl}"'
+    else:
+        response["Content-Disposition"] = f'inline; filename="{filename}"'
     return response

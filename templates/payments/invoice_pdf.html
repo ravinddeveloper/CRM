@@ -5,8 +5,8 @@
   <title>Invoice #{{ invoice.invoice_number }}</title>
   <style>
     body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e293b; margin: 40px; font-size: 13px; line-height: 1.5; }
-    .header { border-bottom: 2px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; }
-    .logo { font-size: 24px; font-weight: 800; color: #4f46e5; }
+    .header { border-bottom: 2px solid {{ branding.primary_color }}; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; }
+    .logo { font-size: 24px; font-weight: 800; color: {{ branding.primary_color }}; }
     .meta { text-align: right; }
     .title { font-size: 20px; font-weight: bold; margin-bottom: 20px; }
     .details { width: 100%; margin-bottom: 30px; }
@@ -18,15 +18,19 @@
     .totals table { width: 100%; }
     .totals td { padding: 6px 0; }
     .totals td:last-child { text-align: right; }
-    .total-row { font-size: 16px; font-weight: bold; border-top: 2px solid #1e293b; color: #4f46e5; }
+    .total-row { font-size: 16px; font-weight: bold; border-top: 2px solid #1e293b; color: {{ branding.primary_color }}; }
     .footer { font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; }
   </style>
 </head>
 <body>
   <div class="header">
     <div>
-      <div class="logo">EduFlow LMS</div>
-      <p style="color: #64748b; margin-top: 4px;">Modern Learning Platform</p>
+      {% if PLATFORM_LOGO_URL %}<img src="{{ PLATFORM_LOGO_URL }}" alt="{{ PLATFORM_NAME }}" style="max-height:64px;max-width:220px">{% else %}<div class="logo">{{ PLATFORM_NAME }}</div>{% endif %}
+      {% if branding.tagline %}<p style="color: #64748b; margin-top: 4px;">{{ branding.tagline }}</p>{% endif %}
+      {% if branding.legal_name %}<p>{{ branding.legal_name }}</p>{% endif %}
+      {% if branding.billing_address %}<p>{{ branding.billing_address|linebreaksbr }}</p>{% endif %}
+      {% if branding.tax_registration_number %}<p>Tax ID: {{ branding.tax_registration_number }}</p>{% endif %}
+      {% if branding.support_email %}<p>{{ branding.support_email }}</p>{% endif %}
     </div>
     <div class="meta">
       <strong>INVOICE</strong><br>
@@ -99,7 +103,7 @@
   </div>
 
   <div class="footer">
-    Thank you for learning with EduFlow LMS.<br>
+    {% if branding.invoice_footer %}{{ branding.invoice_footer }}{% else %}Thank you for learning with {{ PLATFORM_NAME }}.{% endif %}<br>
     This is a computer-generated tax invoice and requires no physical signature.
   </div>
 </body>
