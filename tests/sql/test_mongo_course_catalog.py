@@ -1,7 +1,8 @@
 import pytest
 
 from apps.courses.repositories.mongo import MongoCourseCatalogRepository
-from tests.factories import make_category, make_course
+from apps.courses.serializers import CourseDetailSerializer
+from tests.factories import make_category, make_course, make_lecture, make_section
 
 pytestmark = pytest.mark.django_db
 
@@ -60,3 +61,20 @@ def test_course_catalog_records_normalize_mongo_datetime_and_decimal_values():
     assert record["price"] == "10.00"
     assert record["created_at"].utcoffset().total_seconds() == 0
     assert "source_revision" not in record
+
+
+def test_mongo_catalog_document_has_the_existing_course_detail_api_shape():
+    course = make_course(title="Detail projection")
+    course.teacher.profile.bio = "Instructor details"
+    course.teacher.profile.save(update_fields=["bio", "updated_at"])
+    section = make_section(course=course)
+    lecture = make_lecture(section=section)
+    document = MongoCourseCatalogRepository._sql_document(course)
+
+    response = CourseDetailSerializer(MongoCourseCatalogRepository._record(document)).data
+
+    assert response["id"] == str(course.pk)
+    assert response["teacher_name"] == course.teacher.full_name
+    assert response["teacher_bio"] == "Instructor details"
+    assert response["sections"][0]["id"] == str(section.pk)
+    assert response["sections"][0]["lectures"][0]["id"] == str(lecture.pk)

@@ -22,8 +22,8 @@ class Command(BaseCommand):
         if options["dry_run"]:
             if options["drain_outbox"]:
                 raise CommandError("--dry-run cannot be combined with --drain-outbox.")
-            count = Course.objects.filter(status="published").count()
-            self.stdout.write(self.style.SUCCESS(f"Dry run: {count} published courses are available."))
+            count = Course.objects.count()
+            self.stdout.write(self.style.SUCCESS(f"Dry run: {count} courses are available for projection."))
             return
         if not options["drain_outbox"] and get_database_engine() is not DatabaseEngine.SQL:
             raise CommandError("Run the initial SQL snapshot while DATABASE_ENGINE=sql.")
@@ -32,9 +32,9 @@ class Command(BaseCommand):
             repository = MongoCourseCatalogRepository()
             imported = sum(
                 bool(repository.import_sql_course(course))
-                for course in Course.objects.filter(status="published").select_related(
-                    "category", "teacher"
-                ).order_by("pk").iterator(chunk_size=batch_size)
+                for course in Course.objects.select_related(
+                    "category", "teacher", "teacher__profile"
+                ).prefetch_related("tags", "sections__lectures").order_by("pk").iterator(chunk_size=batch_size)
             )
         except Exception as exc:
             raise CommandError("Course catalog snapshot failed; it is safe to rerun after fixing MongoDB.") from exc

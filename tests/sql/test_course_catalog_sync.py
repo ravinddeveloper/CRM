@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 
 from apps.courses.models import CourseCatalogSyncEvent
 from apps.courses.tasks import process_catalog_event
-from tests.factories import make_category, make_course, make_teacher
+from tests.factories import make_category, make_course, make_lecture, make_section, make_teacher
 
 pytestmark = pytest.mark.django_db
 
@@ -22,10 +22,14 @@ def test_catalog_outbox_tracks_course_category_tags_and_teacher_name(monkeypatch
     category.save()
     from apps.courses.models import Tag
     course.tags.add(Tag.objects.create(name="Catalog tag"))
+    section = make_section(course=course)
+    make_lecture(section=section)
     teacher.first_name = "Changed"
     teacher.save(update_fields=["first_name"])
+    teacher.profile.bio = "Updated instructor bio"
+    teacher.profile.save(update_fields=["bio", "updated_at"])
 
-    assert CourseCatalogSyncEvent.objects.filter(course_id=course.pk).count() >= initial + 3
+    assert CourseCatalogSyncEvent.objects.filter(course_id=course.pk).count() >= initial + 6
 
 
 def test_catalog_worker_projects_current_course_snapshot_with_event_revision(monkeypatch):

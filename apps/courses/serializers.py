@@ -1,5 +1,6 @@
 from django.core.files.storage import default_storage
 from rest_framework import serializers
+from collections.abc import Mapping
 
 from apps.courses.models import Category, Course, Section, Tag
 from apps.lectures.models import Lecture
@@ -97,6 +98,7 @@ class CourseDetailSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(source="teacher.full_name", read_only=True)
     teacher_bio = serializers.CharField(source="teacher.profile.bio", default="", read_only=True)
     effective_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    thumbnail = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -128,3 +130,12 @@ class CourseDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_thumbnail(self, course):
+        value = course.get("thumbnail") if isinstance(course, Mapping) else getattr(course, "thumbnail", None)
+        if not value:
+            return None
+        path = value.name if hasattr(value, "name") else value
+        url = default_storage.url(path)
+        request = self.context.get("request")
+        return request.build_absolute_uri(url) if request and not url.startswith(("http://", "https://")) else url

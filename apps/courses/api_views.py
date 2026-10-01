@@ -84,14 +84,17 @@ class CourseDetailAPIView(generics.RetrieveAPIView):
     """
     permission_classes = [permissions.AllowAny]
     serializer_class = CourseDetailSerializer
-    queryset = Course.objects.all().select_related("category", "teacher", "teacher__profile")
     lookup_field = "id"
 
     def get_object(self):
-        course = super().get_object()
-        if course.status != CourseStatus.PUBLISHED:
+        course = get_course_catalog_repository().get_by_id(self.kwargs[self.lookup_field])
+        if course is None:
+            raise Http404("Course not found.")
+        if course["status"] != CourseStatus.PUBLISHED:
             user = self.request.user
-            if not user.is_authenticated or (not user.is_staff and course.teacher != user):
+            if not user.is_authenticated or (
+                not user.is_staff and course["teacher_id"] != str(user.pk)
+            ):
                 raise Http404("Course not found or not published.")
         return course
 

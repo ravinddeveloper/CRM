@@ -7,9 +7,11 @@ from django.db import transaction
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 from django.dispatch import receiver
 
+from apps.accounts.models import Profile
+from apps.lectures.models import Lecture
 from infrastructure.database.config import DatabaseEngine, get_database_engine
 
-from .models import Category, Course, CourseCatalogSyncEvent, Tag
+from .models import Category, Course, CourseCatalogSyncEvent, Section, Tag
 
 logger = logging.getLogger("apps.courses")
 User = get_user_model()
@@ -83,3 +85,22 @@ def teacher_changed(sender, instance, raw=False, **kwargs):
     if raw or kwargs.get("update_fields") is not None and not ({"first_name", "last_name"} & kwargs["update_fields"]):
         return
     _enqueue_courses(Course.objects.filter(teacher_id=instance.pk))
+
+
+@receiver(post_save, sender=Profile, dispatch_uid="courses.mongo_catalog.teacher.profile")
+def teacher_profile_changed(sender, instance, raw=False, **kwargs):
+    if raw or kwargs.get("update_fields") is not None and "bio" not in kwargs["update_fields"]:
+        return
+    _enqueue_courses(Course.objects.filter(teacher_id=instance.user_id))
+
+
+@receiver(post_save, sender=Section, dispatch_uid="courses.mongo_catalog.section.save")
+@receiver(pre_delete, sender=Section, dispatch_uid="courses.mongo_catalog.section.delete")
+def section_changed(sender, instance, **kwargs):
+    enqueue_course(instance.course_id)
+
+
+@receiver(post_save, sender=Lecture, dispatch_uid="courses.mongo_catalog.lecture.save")
+@receiver(pre_delete, sender=Lecture, dispatch_uid="courses.mongo_catalog.lecture.delete")
+def lecture_changed(sender, instance, **kwargs):
+    enqueue_course(instance.section.course_id)

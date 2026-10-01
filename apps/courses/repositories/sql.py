@@ -1,6 +1,7 @@
 """SQL adapter for the published course list API."""
 from django.db import DatabaseError
 from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
 
 from apps.courses.models import Course, CourseStatus
 from infrastructure.database.exceptions import DatabaseConnectionError
@@ -47,3 +48,42 @@ class SQLCourseCatalogRepository:
             return count, records
         except DatabaseError as exc:
             raise DatabaseConnectionError("The SQL database could not list published courses.") from exc
+
+    def get_by_id(self, course_id):
+        try:
+            course = Course.objects.select_related("category", "teacher", "teacher__profile").prefetch_related(
+                "tags", "sections__lectures"
+            ).filter(pk=course_id).first()
+            if course is None:
+                return None
+            record = self._record(course)
+            try:
+                teacher_bio = course.teacher.profile.bio
+            except ObjectDoesNotExist:
+                teacher_bio = ""
+            record.update({
+                "teacher_id": str(course.teacher_id),
+                "teacher": {
+                    "full_name": course.teacher.full_name,
+                    "profile": {"bio": teacher_bio},
+                },
+                "description": course.description,
+                "preview_video_key": course.preview_video_key,
+                "language": course.language,
+                "learning_objectives": course.learning_objectives,
+                "requirements": course.requirements,
+                "updated_at": course.updated_at,
+                "tags": [{"id": str(tag.pk), "name": tag.name, "slug": tag.slug} for tag in course.tags.all()],
+                "sections": [{
+                    "id": str(section.pk), "title": section.title, "order": section.order,
+                    "lectures": [{
+                        "id": str(lecture.pk), "title": lecture.title, "order": lecture.order,
+                        "estimated_duration": lecture.estimated_duration,
+                        "duration_seconds": lecture.estimated_duration,
+                        "is_free_preview": lecture.is_free_preview,
+                    } for lecture in section.lectures.all()],
+                } for section in course.sections.all()],
+            })
+            return record
+        except DatabaseError as exc:
+            raise DatabaseConnectionError("The SQL database could not retrieve the course catalog record.") from exc

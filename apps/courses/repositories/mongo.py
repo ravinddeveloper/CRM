@@ -1,6 +1,7 @@
 """MongoDB read adapter for the synchronized published course catalog."""
 import re
 from datetime import timezone
+from uuid import UUID
 
 from pymongo import DESCENDING
 from pymongo.errors import PyMongoError
@@ -27,7 +28,10 @@ class MongoCourseCatalogRepository:
         for key in ("price", "discount_price", "effective_price"):
             if result.get(key) is not None:
                 result[key] = str(result[key])
-        result["created_at"] = result["created_at"].replace(tzinfo=timezone.utc) if result["created_at"].tzinfo is None else result["created_at"]
+        for field in ("created_at", "updated_at"):
+            value = result.get(field)
+            if value is not None and value.tzinfo is None:
+                result[field] = value.replace(tzinfo=timezone.utc)
         return result
 
     @staticmethod
@@ -44,10 +48,28 @@ class MongoCourseCatalogRepository:
             "category": ({"id": str(category.pk), "name": category.name, "slug": category.slug,
                           "description": category.description, "icon": category.icon} if category else None),
             "teacher_name": course.teacher.full_name,
+            "teacher_id": str(course.teacher_id),
+            "teacher": {
+                "full_name": course.teacher.full_name,
+                "profile": {"bio": getattr(getattr(course.teacher, "profile", None), "bio", "")},
+            },
             "price": str(course.price), "discount_price": str(course.discount_price) if course.discount_price is not None else None,
             "effective_price": str(effective_price), "currency": course.currency,
             "is_free": course.is_free, "status": course.status, "is_featured": course.is_featured,
             "difficulty": course.difficulty, "estimated_duration": course.estimated_duration,
+            "description": course.description, "preview_video_key": course.preview_video_key,
+            "language": course.language, "learning_objectives": course.learning_objectives,
+            "requirements": course.requirements, "updated_at": course.updated_at,
+            "tags": [{"id": str(tag.pk), "name": tag.name, "slug": tag.slug} for tag in course.tags.all()],
+            "sections": [{
+                "id": str(section.pk), "title": section.title, "order": section.order,
+                "lectures": [{
+                    "id": str(lecture.pk), "title": lecture.title, "order": lecture.order,
+                    "estimated_duration": lecture.estimated_duration,
+                    "duration_seconds": lecture.estimated_duration,
+                    "is_free_preview": lecture.is_free_preview,
+                } for lecture in section.lectures.all()],
+            } for section in course.sections.all()],
             "created_at": course.created_at, "deleted": False,
         }
 
@@ -115,3 +137,13 @@ class MongoCourseCatalogRepository:
             return count, [self._record(row) for row in rows]
         except PyMongoError as exc:
             raise DatabaseConnectionError("MongoDB could not list published courses.") from exc
+
+    def get_by_id(self, course_id):
+        try:
+            identifier = str(UUID(str(course_id)))
+            document = self.collection.find_one({"public_id": identifier, "deleted": {"$ne": True}})
+            return self._record(document) if document else None
+        except (ValueError, TypeError):
+            return None
+        except PyMongoError as exc:
+            raise DatabaseConnectionError("MongoDB could not retrieve the course catalog record.") from exc

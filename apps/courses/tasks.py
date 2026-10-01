@@ -22,7 +22,9 @@ def process_catalog_event(event_id):
         if event.event_type == CourseCatalogSyncEvent.DELETE:
             repository.delete_by_id(event.course_id, source_revision=event.pk)
         else:
-            course = Course.objects.select_related("category", "teacher").filter(pk=event.course_id).first()
+            course = Course.objects.select_related("category", "teacher", "teacher__profile").prefetch_related(
+                "tags", "sections__lectures"
+            ).filter(pk=event.course_id).first()
             if course is None:
                 repository.delete_by_id(event.course_id, source_revision=event.pk)
             else:

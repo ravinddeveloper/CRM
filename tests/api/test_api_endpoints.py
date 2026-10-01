@@ -61,9 +61,16 @@ class TestCourseDetailAPI(TestCase):
 
     def test_get_course_detail(self):
         course = make_course(status="published")
+        course.teacher.profile.bio = "Instructor biography"
+        course.teacher.profile.save(update_fields=["bio", "updated_at"])
+        section = make_section(course=course)
+        lecture = make_lecture(section=section)
         response = self.client.get(f"/api/v1/courses/{course.id}/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(str(response.data["id"]), str(course.id))
+        self.assertEqual(response.data["teacher_bio"], "Instructor biography")
+        self.assertEqual(str(response.data["sections"][0]["id"]), str(section.id))
+        self.assertEqual(str(response.data["sections"][0]["lectures"][0]["id"]), str(lecture.id))
 
     def test_get_draft_course_returns_404_for_student(self):
         draft = make_course(status="draft")
@@ -71,6 +78,13 @@ class TestCourseDetailAPI(TestCase):
         self.client.force_authenticate(user=student)
         response = self.client.get(f"/api/v1/courses/{draft.id}/")
         self.assertIn(response.status_code, [403, 404])
+
+    def test_course_teacher_can_preview_own_draft(self):
+        draft = make_course(status="draft")
+        self.client.force_authenticate(user=draft.teacher)
+        response = self.client.get(f"/api/v1/courses/{draft.id}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "draft")
 
 
 class TestProgressAPI(TestCase):
