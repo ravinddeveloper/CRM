@@ -13,7 +13,8 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.http import require_http_methods
 
-from apps.audit.models import AuditAction, AuditLog
+from apps.audit.models import AuditAction
+from apps.audit.services import AuditLogService
 from apps.coupons.models import Coupon, DiscountType
 from apps.courses.models import Category, Course, CourseStatus, DifficultyLevel, Section
 from apps.enrollments.models import AccessType, Enrollment, EnrollmentStatus
@@ -207,7 +208,7 @@ def course_create_view(request):
         course.save()
 
         # Audit log
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.COURSE_CREATED,
             object_type="Course",
@@ -317,7 +318,7 @@ def course_publish_toggle_view(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     if course.is_published:
         course.unpublish()
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.COURSE_UNPUBLISHED,
             object_type="Course",
@@ -333,7 +334,7 @@ def course_publish_toggle_view(request, course_id):
             return redirect("admin_panel:course_curriculum", course_id=course.id)
 
         course.publish()
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.COURSE_PUBLISHED,
             object_type="Course",
@@ -363,7 +364,7 @@ def course_delete_view(request, course_id):
         course.status = CourseStatus.ARCHIVED
         course.save(update_fields=["status"])
 
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.COURSE_UNPUBLISHED,
             object_type="Course",
@@ -391,7 +392,7 @@ def course_delete_view(request, course_id):
                 course.order_items.all().delete()
             course.delete()
 
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.COURSE_DELETED,
             object_type="Course",
@@ -710,7 +711,7 @@ def transaction_refund_view(request, order_id):
             revoked_count += 1
 
     # Audit log
-    AuditLog.objects.create(
+    AuditLogService.create(
         actor=request.user,
         action=AuditAction.REFUND_ISSUED,
         object_type="Order",
@@ -795,7 +796,7 @@ def coupon_create_view(request):
             created_by=request.user,
         )
 
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.COUPON_CREATED,
             object_type="Coupon",
@@ -903,7 +904,7 @@ def enrollment_create_view(request):
         course.enrollment_count = course.enrollments.filter(status=EnrollmentStatus.ACTIVE).count()
         course.save(update_fields=["enrollment_count"])
 
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.ENROLLMENT_CREATED,
             object_type="Enrollment",
@@ -929,7 +930,7 @@ def enrollment_toggle_view(request, enrollment_id):
     enrollment = get_object_or_404(Enrollment, id=enrollment_id)
     if enrollment.status == EnrollmentStatus.ACTIVE:
         enrollment.status = EnrollmentStatus.REVOKED
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.ENROLLMENT_REVOKED,
             object_type="Enrollment",
@@ -1026,7 +1027,7 @@ def user_create_view(request):
             email_verified=verified,
         )
 
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.USER_CREATED,
             object_type="User",
@@ -1069,7 +1070,7 @@ def change_user_role_view(request, user_id):
         user.is_staff = (new_role == "admin")
         user.save(update_fields=["role", "is_staff"])
 
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.ROLE_CHANGED,
             object_type="User",
@@ -1110,13 +1111,11 @@ def activate_user_view(request, user_id):
 def audit_log_view(request):
     """View tamper-evident security and activity audit trail."""
     action_filter = request.GET.get("action", "").strip()
-    logs = AuditLog.objects.select_related("actor").order_by("-created_at")
-    if action_filter:
-        logs = logs.filter(action=action_filter)
+    logs = AuditLogService.list_recent(action=action_filter or None, limit=150)
 
     context = {
         "active_tab": "audit_logs",
-        "logs": logs[:150],
+        "logs": logs,
         "action_filter": action_filter,
         "actions": AuditAction.choices,
     }
@@ -1262,7 +1261,7 @@ def category_create_view(request):
             category.image = request.FILES["image"]
             category.save(update_fields=["image"])
 
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.SETTINGS_CHANGED,
             object_type="Category",
@@ -1346,7 +1345,7 @@ def category_edit_view(request, category_id):
 
         category.save()
 
-        AuditLog.objects.create(
+        AuditLogService.create(
             actor=request.user,
             action=AuditAction.SETTINGS_CHANGED,
             object_type="Category",
@@ -1375,7 +1374,7 @@ def category_toggle_view(request, category_id):
     category.is_active = not category.is_active
     category.save(update_fields=["is_active", "updated_at"])
 
-    AuditLog.objects.create(
+    AuditLogService.create(
         actor=request.user,
         action=AuditAction.SETTINGS_CHANGED,
         object_type="Category",
@@ -1404,7 +1403,7 @@ def category_delete_view(request, category_id):
     # Delete category (courses.category becomes NULL due to SET_NULL)
     category.delete()
 
-    AuditLog.objects.create(
+    AuditLogService.create(
         actor=request.user,
         action=AuditAction.SETTINGS_CHANGED,
         object_type="Category",

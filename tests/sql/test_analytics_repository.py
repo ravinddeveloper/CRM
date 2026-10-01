@@ -20,3 +20,5 @@ class SQLCourseViewRepositoryTests(TestCase):
         self.assertEqual(record.course_id, str(course.id))
         self.assertEqual(record.user_id, str(user.id))
         self.assertTrue(CourseView.objects.filter(pk=record.id).exists())
+        course.refresh_from_db()
+        self.assertEqual(course.total_views, 1)

@@ -228,3 +228,21 @@ class CourseCatalogSyncEvent(models.Model):
     class Meta:
         ordering = ["created_at", "id"]
         indexes = [models.Index(fields=["processed_at", "created_at"])]
+
+
+class CategoryCatalogSyncEvent(models.Model):
+    """Transactional outbox for public course category projections."""
+    UPSERT = "upsert"
+    DELETE = "delete"
+    EVENT_CHOICES = [(UPSERT, "Upsert"), (DELETE, "Delete")]
+
+    event_type = models.CharField(max_length=10, choices=EVENT_CHOICES)
+    category_id = models.UUIDField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveIntegerField(default=0)
+    last_error = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["processed_at", "created_at"])]

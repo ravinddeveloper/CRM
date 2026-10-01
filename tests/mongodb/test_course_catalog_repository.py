@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
@@ -29,6 +30,9 @@ def repository():
 def test_catalog_projection_filters_published_courses_and_applies_revisions(repository):
     category = make_category(name=f"Catalog {uuid4().hex[:7]}")
     course = make_course(category=category, title=f"Catalog course {uuid4().hex[:7]}")
+    higher_price = make_course(
+        category=category, title=f"Catalog course {uuid4().hex[:7]}", price=Decimal("2500.00")
+    )
     course.teacher.profile.bio = "Mongo catalog bio"
     course.teacher.profile.save(update_fields=["bio", "updated_at"])
     course.tags.create(name=f"Tag {uuid4().hex[:7]}")
@@ -36,18 +40,24 @@ def test_catalog_projection_filters_published_courses_and_applies_revisions(repo
     lecture = make_lecture(section=section)
 
     repository.sync_sql_course(course, source_revision=10)
+    repository.sync_sql_course(higher_price, source_revision=9)
     count, records = repository.list_published(
         category=category.slug, search="Catalog course", difficulty=course.difficulty,
-        is_free=False, limit=10, offset=0,
+        is_free=False, price_min="500", sort="price_low", limit=10, offset=0,
     )
 
-    assert count == 1
+    assert count == 2
     assert records[0]["id"] == str(course.pk)
+    assert records[1]["id"] == str(higher_price.pk)
     assert records[0]["category"]["slug"] == category.slug
     detail = CourseDetailSerializer(repository.get_by_id(course.pk)).data
     assert detail["teacher_bio"] == "Mongo catalog bio"
     assert detail["tags"][0]["name"].startswith("Tag ")
     assert detail["sections"][0]["lectures"][0]["id"] == str(lecture.pk)
+    detail_record = repository.get_by_slug(course.slug)
+    assert detail_record["teacher"]["email"] == course.teacher.email
+    assert detail_record["is_published"] is True
+    assert detail_record["total_lectures_count"] == 1
 
     course.title = "Updated catalog title"
     course.save(update_fields=["title", "updated_at"])

@@ -11,7 +11,7 @@ from apps.accounts.models import Profile
 from apps.lectures.models import Lecture
 from infrastructure.database.config import DatabaseEngine, get_database_engine
 
-from .models import Category, Course, CourseCatalogSyncEvent, Section, Tag
+from .models import Category, CategoryCatalogSyncEvent, Course, CourseCatalogSyncEvent, Section, Tag
 
 logger = logging.getLogger("apps.courses")
 User = get_user_model()
@@ -33,6 +33,22 @@ def _dispatch(event_id):
         logger.exception("Could not dispatch course catalog event %s; it remains queued.", event_id)
 
 
+def enqueue_category(category_id, event_type=CategoryCatalogSyncEvent.UPSERT):
+    enabled = config("MONGO_COURSE_CATALOG_SYNC_ENABLED", default=False, cast=bool)
+    if get_database_engine() is not DatabaseEngine.MONGODB and not enabled:
+        return
+    event = CategoryCatalogSyncEvent.objects.create(event_type=event_type, category_id=category_id)
+    transaction.on_commit(lambda: _dispatch_category(event.pk))
+
+
+def _dispatch_category(event_id):
+    try:
+        from .tasks import process_category_catalog_sync_event
+        process_category_catalog_sync_event.delay(event_id)
+    except Exception:
+        logger.exception("Could not dispatch course category event %s; it remains queued.", event_id)
+
+
 def _enqueue_courses(queryset):
     for course_id in queryset.values_list("pk", flat=True).iterator():
         enqueue_course(course_id)
@@ -50,8 +66,18 @@ def course_deleted(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Category, dispatch_uid="courses.mongo_catalog.category.save")
+def category_saved(sender, instance, raw=False, **kwargs):
+    if raw:
+        return
+    enqueue_category(instance.pk)
+    _enqueue_courses(Course.objects.filter(category_id=instance.pk))
+
+
 @receiver(pre_delete, sender=Category, dispatch_uid="courses.mongo_catalog.category.delete")
-def category_changed(sender, instance, **kwargs):
+def category_deleted(sender, instance, **kwargs):
+    enqueue_category(instance.pk, CategoryCatalogSyncEvent.DELETE)
+    for child_id in Category.objects.filter(parent_id=instance.pk).values_list("pk", flat=True).iterator():
+        enqueue_category(child_id)
     _enqueue_courses(Course.objects.filter(category_id=instance.pk))
 
 

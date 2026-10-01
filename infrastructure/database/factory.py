@@ -11,6 +11,8 @@ from apps.enrollments.repositories.base import EnrollmentRepository
 from apps.enrollments.repositories.sql import SQLEnrollmentRepository
 from apps.courses.repositories.base import CourseCatalogRepository
 from apps.courses.repositories.sql import SQLCourseCatalogRepository
+from apps.audit.repositories.base import AuditLogRepository
+from apps.audit.repositories.sql import SQLAuditLogRepository
 
 from .config import DatabaseEngine, get_database_engine
 
@@ -28,6 +30,21 @@ def _get_course_catalog_repository(selected: DatabaseEngine) -> CourseCatalogRep
 
         return MongoCourseCatalogRepository()
     raise ValueError(f"No course catalog repository is registered for {selected!r}.")
+
+
+def get_audit_log_repository(engine: str | DatabaseEngine | None = None) -> AuditLogRepository:
+    return _get_audit_log_repository(get_database_engine(engine))
+
+
+@lru_cache(maxsize=2)
+def _get_audit_log_repository(selected: DatabaseEngine) -> AuditLogRepository:
+    if selected is DatabaseEngine.SQL:
+        return SQLAuditLogRepository()
+    if selected is DatabaseEngine.MONGODB:
+        from apps.audit.repositories.mongo import MongoAuditLogRepository
+
+        return MongoAuditLogRepository()
+    raise ValueError(f"No audit log repository is registered for {selected!r}.")
 
 
 def get_account_repository(engine: str | DatabaseEngine | None = None) -> AccountRepository:

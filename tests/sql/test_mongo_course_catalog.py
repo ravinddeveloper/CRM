@@ -21,10 +21,14 @@ class FakeCollection:
 class FakeDatabase:
     def __init__(self):
         self.collection = FakeCollection()
+        self.category_collection = FakeCollection()
 
     def __getitem__(self, name):
-        assert name == "course_catalog"
-        return self.collection
+        if name == "course_catalog":
+            return self.collection
+        if name == "course_categories":
+            return self.category_collection
+        raise AssertionError(name)
 
 
 def test_course_catalog_mongo_projection_keeps_api_fields_and_revision():
@@ -44,8 +48,8 @@ def test_course_catalog_mongo_projection_keeps_api_fields_and_revision():
     assert document["id"] == str(course.pk)
     assert document["category"]["slug"] == category.slug
     assert document["teacher_name"] == course.teacher.full_name
-    assert document["price"] == str(course.price)
-    assert document["effective_price"] == str(course.effective_price)
+    assert document["price"].to_decimal() == course.price
+    assert document["effective_price"].to_decimal() == course.effective_price
     assert document["source_revision"] == 71
 
 
@@ -58,7 +62,7 @@ def test_course_catalog_records_normalize_mongo_datetime_and_decimal_values():
         "deleted": False, "source_revision": 2,
     })
 
-    assert record["price"] == "10.00"
+    assert str(record["price"]) == "10.00"
     assert record["created_at"].utcoffset().total_seconds() == 0
     assert "source_revision" not in record
 
@@ -78,3 +82,21 @@ def test_mongo_catalog_document_has_the_existing_course_detail_api_shape():
     assert response["teacher_bio"] == "Instructor details"
     assert response["sections"][0]["id"] == str(section.pk)
     assert response["sections"][0]["lectures"][0]["id"] == str(lecture.pk)
+
+
+def test_mongo_category_sync_uses_tombstone_safe_slug_projection():
+    category = make_category(name="Category projection")
+    database = FakeDatabase()
+    repository = MongoCourseCatalogRepository(database=database)
+
+    repository.sync_sql_category(category, source_revision=81)
+
+    query, pipeline, kwargs = database.category_collection.update
+    assert query == {"public_id": str(category.pk)}
+    assert kwargs["upsert"] is True
+    condition = pipeline[0]["$replaceWith"]["$cond"]
+    assert condition[0] == {"$gt": [81, {"$ifNull": ["$source_revision", -1]}]}
+    document = condition[1]["$mergeObjects"][1]
+    assert document["slug"] == category.slug
+    assert document["deleted"] is False
+    assert document["source_revision"] == 81

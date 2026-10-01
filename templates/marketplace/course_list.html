@@ -111,7 +111,7 @@
         <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 sticky top-24">
           <div class="flex items-center justify-between pb-4 border-b border-gray-800">
             <h2 class="text-base font-bold text-white">Filter Courses</h2>
-            {% if selected_category or selected_difficulty or q %}
+            {% if selected_category or selected_difficulty or q or price_min or price_max %}
             <a href="{% url 'marketplace:course_list' %}" class="text-xs text-brand-400 hover:underline">Reset</a>
             {% endif %}
           </div>
@@ -146,6 +146,18 @@
               </select>
             </div>
 
+            <!-- Price Range -->
+            <div class="grid grid-cols-2 gap-2">
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Min price
+                <input type="number" min="0" step="0.01" name="price_min" value="{{ price_min }}"
+                       class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200">
+              </label>
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Max price
+                <input type="number" min="0" step="0.01" name="price_max" value="{{ price_max }}"
+                       class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200">
+              </label>
+            </div>
+
             <!-- Sort By -->
             <div>
               <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Sort By</label>
@@ -153,6 +165,7 @@
                       class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:ring-2 focus:ring-brand-500 focus:outline-none">
                 <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest First</option>
                 <option value="popular" {% if sort == "popular" %}selected{% endif %}>Most Popular</option>
+                <option value="rating" {% if sort == "rating" %}selected{% endif %}>Highest Rated</option>
                 <option value="price_low" {% if sort == "price_low" %}selected{% endif %}>Price: Low to High</option>
                 <option value="price_high" {% if sort == "price_high" %}selected{% endif %}>Price: High to Low</option>
               </select>
@@ -182,8 +195,8 @@
           <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 hover:shadow-2xl hover:shadow-brand-500/10 transition-all flex flex-col group">
             <!-- Thumbnail -->
             <a href="{% url 'marketplace:course_detail' slug=course.slug %}" class="block relative aspect-video bg-gray-800 overflow-hidden">
-              {% if course.thumbnail %}
-              <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}"
+              {% if course.thumbnail_url %}
+              <img src="{{ course.thumbnail_url }}" alt="{{ course.title }}"
                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
               {% else %}
               <div class="w-full h-full bg-gradient-to-br from-gray-800 via-gray-900 to-indigo-950 flex items-center justify-center">
@@ -226,9 +239,9 @@
                 <!-- Teacher -->
                 <div class="flex items-center gap-2">
                   <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold">
-                    {{ course.teacher.first_name|first|default:course.teacher.email|first|upper }}
+                    {{ course.teacher_first_name|first|default:course.teacher_email|first|upper }}
                   </div>
-                  <span class="text-xs text-gray-400 truncate max-w-[100px]">{{ course.teacher.full_name|default:course.teacher.email }}</span>
+                  <span class="text-xs text-gray-400 truncate max-w-[100px]">{{ course.teacher_name|default:course.teacher_email }}</span>
                 </div>
 
                 <!-- Price -->
@@ -254,7 +267,7 @@
         {% if page_obj.has_other_pages %}
         <div class="mt-12 flex items-center justify-center gap-2">
           {% if page_obj.has_previous %}
-          <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}"
+          <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if selected_category %}&category={{ selected_category|urlencode }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty|urlencode }}{% endif %}{% if sort %}&sort={{ sort|urlencode }}{% endif %}{% if price_min %}&price_min={{ price_min|urlencode }}{% endif %}{% if price_max %}&price_max={{ price_max|urlencode }}{% endif %}"
              class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-800">
             Previous
           </a>
@@ -263,7 +276,7 @@
             Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
           </span>
           {% if page_obj.has_next %}
-          <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}"
+          <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if selected_category %}&category={{ selected_category|urlencode }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty|urlencode }}{% endif %}{% if sort %}&sort={{ sort|urlencode }}{% endif %}{% if price_min %}&price_min={{ price_min|urlencode }}{% endif %}{% if price_max %}&price_max={{ price_max|urlencode }}{% endif %}"
              class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-800">
             Next
           </a>

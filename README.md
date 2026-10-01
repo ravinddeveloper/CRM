@@ -88,7 +88,7 @@ Location checks use browser-reported coordinates and are not proof against GPS s
 
 ### SQL/MongoDB repository migration
 
-The project currently depends on Django's relational ORM throughout its apps. Course-view analytics writes, in-app notification storage/API flows, student enrollment-list API, and course catalog list/detail APIs have SQL and MongoDB repositories selected centrally by `DATABASE_ENGINE=sql|mongodb`. Account data has SQL and Mongo repositories plus transactional outboxes for identity and catalog projections when their `MONGO_*_SYNC_ENABLED=True` flags are enabled; authentication, sessions, profile, reset, verification, permission checks, course authoring and marketplace pages, and Django admin still use SQL. The selector is validated during Django startup; it does not replace Django's SQL database. This is not yet a whole-site MongoDB switch, and enrollment writes/access checks remain SQL-backed. Keep `DATABASE_ENGINE=sql` for the running LMS until each domain and its dependent Django flows are migrated and parity-tested. Mongo integration tests run when `MONGO_URI` points to a reachable test database.
+The project currently depends on Django's relational ORM throughout its apps. Course-view analytics writes, in-app notification storage/API flows, student enrollment-list API, course catalog APIs, and public marketplace course/category lists and search have SQL and MongoDB repositories selected centrally by `DATABASE_ENGINE=sql|mongodb`. Account data has SQL and Mongo repositories plus transactional outboxes for identity, course, and category projections when their `MONGO_*_SYNC_ENABLED=True` flags are enabled; authentication, sessions, profile, reset, verification, permission checks, course detail HTML, category authoring, and Django admin still use SQL. The selector is validated during Django startup; it does not replace Django's SQL database. This is not yet a whole-site MongoDB switch, and enrollment writes/access checks remain SQL-backed. Keep `DATABASE_ENGINE=sql` for the running LMS until each domain and its dependent Django flows are migrated and parity-tested. Mongo integration tests run when `MONGO_URI` points to a reachable test database.
 
 ---
 
@@ -228,6 +228,14 @@ This uses the normal test database lifecycle on PostgreSQL; it does not replace 
 
 This profile supports Mongo repository integration tests for account CRUD adapters, analytics writes and history import, notifications, and enrollment repository import/listing. The full web application continues to use SQL until its remaining domains and authentication flows are migrated.
 
+Audit writes and the admin audit-log list use the selected `audit_logs` repository. For an audit-history snapshot, temporarily pause audit-producing application requests, then run this command while SQL is selected:
+
+```bash
+python manage.py migrate_audit_logs_to_mongodb --settings=config.settings.development
+```
+
+The snapshot is idempotent and retains event IDs, actor identity/email, JSON changes, and timestamps. Resume requests after it completes; after selecting MongoDB, new audit events go directly to Mongo. This audit-only snapshot does not migrate the other SQL-backed domains.
+
 For a notification cutover without losing writes during the snapshot, apply migrations, set `MONGO_NOTIFICATION_SYNC_ENABLED=True` while `DATABASE_ENGINE=sql`, and restart web and Celery worker processes. Snapshot legacy rows and drain the SQL outbox:
 
 ```bash
@@ -242,7 +250,7 @@ Course-view analytics history has its own SQL-to-Mongo import:
 python manage.py migrate_course_views_to_mongodb --settings=config.settings.development
 ```
 
-The command preserves event IDs, course/user references, and event timestamps. It is safe to rerun.
+The command preserves event IDs, course/user references, and event timestamps, and seeds each course's existing `total_views` value into Mongo's `course_view_counts` collection. Mongo computes the current total as that legacy baseline plus newly recorded events; imported history is excluded from the new-event count, so repeated imports cannot inflate totals. The SQL adapter continues updating the existing `Course.total_views` counter transactionally with its event write. It is safe to rerun.
 
 The published course-list API uses a backend-neutral SQL/Mongo catalog repository. For a Mongo read-pilot rehearsal, apply migrations, enable `MONGO_COURSE_CATALOG_SYNC_ENABLED=True` while `DATABASE_ENGINE=sql`, and restart web, worker, and beat processes before taking the snapshot. This captures catalog changes while preserving SQL as the authoring source:
 
@@ -251,7 +259,7 @@ python manage.py migrate_course_catalog_to_mongodb --dry-run --settings=config.s
 python manage.py migrate_course_catalog_to_mongodb --drain-outbox --settings=config.settings.development
 ```
 
-Then start the optional Mongo service (`docker compose --profile mongodb up -d`), select `DATABASE_ENGINE=mongodb`, and keep catalog synchronization enabled. The course list and detail APIs use the Mongo projection; marketplace pages, teacher authoring, and the rest of the LMS remain SQL-backed. The projection carries course status, sections, lectures, tags, category and teacher profile fields; Mongo catalog results are eventually consistent with SQL edits.
+Then start the optional Mongo service (`docker compose --profile mongodb up -d`), select `DATABASE_ENGINE=mongodb`, and keep catalog synchronization enabled. Course list/detail APIs and public marketplace course/category lists and search use the Mongo projection; course detail HTML, category administration, teacher authoring, and the rest of the LMS remain SQL-backed. The projection carries course status, pricing and popularity sort fields, sections, lectures, tags, category and teacher profile fields; Mongo catalog results are eventually consistent with SQL edits.
 
 For an account cutover rehearsal, apply migrations, set `MONGO_ACCOUNT_SYNC_ENABLED=True` while `DATABASE_ENGINE=sql`, and restart web, worker, and beat processes. This starts durable capture before the initial snapshot. The command copies SQL identities, password hashes, privilege/group grants, profiles, and authentication-token state while leaving SQL untouched:
 

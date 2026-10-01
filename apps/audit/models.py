@@ -71,7 +71,9 @@ class AuditLog(BaseModel):
             obj_id = str(getattr(obj, "pk", ""))
             obj_repr = str(obj)[:500]
 
-        return cls.objects.create(
+        from .services import AuditLogService
+
+        return AuditLogService.create(
             actor=actor,
             action=action,
             object_type=obj_type,

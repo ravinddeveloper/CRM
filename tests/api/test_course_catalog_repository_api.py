@@ -22,8 +22,21 @@ class CatalogRepositoryApiTests(TestCase):
                 "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
             }
         ] * 11
-        self.repository = type("Repository", (), {"list_published": self.list_published})()
+        self.repository = type("Repository", (), {
+            "list_published": self.list_published,
+            "list_categories": self.list_categories,
+            "get_category_by_slug": self.get_category_by_slug,
+        })()
         self.calls = []
+
+    def list_categories(self, *, root_only=False):
+        return [{
+            "id": "518f1675-19ba-46c0-9737-14a66da84fc9", "name": "Music",
+            "slug": "music", "description": "Lessons", "icon": "🎵",
+        }]
+
+    def get_category_by_slug(self, slug):
+        return self.list_categories()[0] if slug == "music" else None
 
     def list_published(self, **kwargs):
         self.calls.append(kwargs)
@@ -60,3 +73,10 @@ class CatalogRepositoryApiTests(TestCase):
         self.assertEqual(self.calls[-1]["offset"], 10)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertIsNone(response.data["next"])
+
+    def test_category_api_reads_from_selected_catalog_repository(self):
+        with patch("apps.courses.api_views.get_course_catalog_repository", return_value=self.repository):
+            response = self.client.get("/api/v1/courses/categories/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["results"][0]["slug"], "music")

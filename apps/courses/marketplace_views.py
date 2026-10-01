@@ -1,72 +1,98 @@
 """Marketplace views - public course browsing."""
 import logging
+from decimal import Decimal, InvalidOperation
+from math import ceil
+from types import SimpleNamespace
 
-from django.core.paginator import Paginator
-from django.db.models import Q
-from django.shortcuts import get_object_or_404, render
+from django.core.files.storage import default_storage
+from django.core.paginator import Page, Paginator
+from django.shortcuts import render
 
 from apps.analytics.services import AnalyticsService
-from apps.courses.models import Category, Course, CourseStatus
+from infrastructure.database.factory import get_course_catalog_repository
 
 logger = logging.getLogger("apps.courses")
 
 
+class CatalogPaginator(Paginator):
+    """Paginator metadata for a repository page already fetched with limit/offset."""
+    def __init__(self, count, per_page):
+        super().__init__([], per_page)
+        self._catalog_count = count
+
+    @property
+    def count(self):
+        return self._catalog_count
+
+    @property
+    def num_pages(self):
+        return max(ceil(self.count / self.per_page), 1)
+
+
+def _catalog_cards(records):
+    for record in records:
+        path = record.get("thumbnail")
+        record["thumbnail_url"] = default_storage.url(path) if path else ""
+    return records
+
+
+def _catalog_page(repository, filters, raw_page, page_size):
+    is_last = raw_page == "last"
+    try:
+        page_number = None if is_last else max(int(raw_page), 1)
+    except (TypeError, ValueError):
+        page_number = 1
+    count, records = repository.list_published(
+        **filters, limit=1 if is_last else page_size,
+        offset=0 if is_last else (page_number - 1) * page_size,
+    )
+    paginator = CatalogPaginator(count, page_size)
+    resolved_page = paginator.num_pages if is_last else min(page_number, paginator.num_pages)
+    if is_last or resolved_page != page_number:
+        _, records = repository.list_published(
+            **filters, limit=page_size, offset=(resolved_page - 1) * page_size
+        )
+    page_obj = Page(_catalog_cards(records), resolved_page, paginator)
+    return paginator, page_obj
+
+
 def course_list_view(request):
     """Main course marketplace page with filtering and search."""
-    courses = Course.objects.filter(status=CourseStatus.PUBLISHED).select_related(
-        "teacher", "category"
-    ).prefetch_related("tags")
-
-    # Filters
     category_slug = request.GET.get("category")
-    if category_slug:
-        courses = courses.filter(category__slug=category_slug)
-
     difficulty = request.GET.get("difficulty")
-    if difficulty:
-        courses = courses.filter(difficulty=difficulty)
-
     price_min = request.GET.get("price_min")
     price_max = request.GET.get("price_max")
-    if price_min:
-        courses = courses.filter(price__gte=price_min)
-    if price_max:
-        courses = courses.filter(price__lte=price_max)
-
-    # Search
     q = request.GET.get("q", "").strip()
-    if q:
-        courses = courses.filter(
-            Q(title__icontains=q)
-            | Q(short_description__icontains=q)
-            | Q(description__icontains=q)
-            | Q(teacher__first_name__icontains=q)
-            | Q(teacher__last_name__icontains=q)
-            | Q(tags__name__icontains=q)
-        ).distinct()
-
-    # Sorting
     sort = request.GET.get("sort", "-created_at")
-    sort_options = {
-        "newest": "-created_at",
-        "popular": "-enrollment_count",
-        "rating": "-average_rating",
-        "price_low": "price",
-        "price_high": "-price",
-    }
-    sort_field = sort_options.get(sort, "-created_at")
-    courses = courses.order_by(sort_field)
+    sort = sort if sort in {"newest", "popular", "rating", "price_low", "price_high"} else "newest"
+    def valid_price(value):
+        if not value:
+            return None
+        try:
+            amount = Decimal(value)
+            return str(amount) if amount.is_finite() else None
+        except (InvalidOperation, TypeError, ValueError):
+            return None
 
-    # Pagination
-    paginator = Paginator(courses, 12)
-    page = request.GET.get("page", 1)
-    page_obj = paginator.get_page(page)
+    repository = get_course_catalog_repository()
+    filters = {
+        "category": category_slug or None, "search": q, "difficulty": difficulty or None,
+        "is_free": None, "price_min": valid_price(price_min), "price_max": valid_price(price_max),
+        "sort": sort, "include_related_search": True,
+    }
+    paginator, page_obj = _catalog_page(repository, filters, request.GET.get("page", "1"), 12)
+    courses = page_obj.object_list
 
     # Sidebar data
-    categories = Category.objects.filter(is_active=True, parent__isnull=True)
-    featured_courses = Course.objects.filter(
-        status=CourseStatus.PUBLISHED, is_featured=True
-    ).select_related("teacher")[:4]
+    categories = [
+        SimpleNamespace(**category)
+        for category in repository.list_categories(root_only=True)
+    ]
+    _, featured_courses = repository.list_published(
+        category=None, search="", difficulty=None, is_free=None, featured_only=True,
+        sort="newest", limit=4, offset=0,
+    )
+    featured_courses = _catalog_cards(featured_courses)
 
     context = {
         "page_obj": page_obj,
@@ -76,6 +102,8 @@ def course_list_view(request):
         "q": q,
         "selected_category": category_slug,
         "selected_difficulty": difficulty,
+        "price_min": price_min,
+        "price_max": price_max,
         "sort": sort,
         "total_count": paginator.count,
         "title": f"Courses{' — ' + q if q else ''}",
@@ -88,73 +116,54 @@ def course_detail_view(request, slug):
     """Course detail page - public with role-specific mentor and admin controls."""
     user = request.user
     is_authenticated = user.is_authenticated
+    repository = get_course_catalog_repository()
+    course = repository.get_by_slug(slug)
+    if course is None:
+        from django.http import Http404
+        raise Http404("Course not found.")
 
-    # Allow mentors and admins to preview their unpublished/draft courses
-    if is_authenticated and (user.is_admin or user.is_staff or (user.is_teacher and Course.objects.filter(slug=slug, teacher=user).exists())):
-        course = get_object_or_404(
-            Course.objects.select_related("teacher", "category", "teacher__profile")
-            .prefetch_related(
-                "sections__lectures",
-                "tags",
-                "reviews__user",
-            ),
-            slug=slug,
-        )
-    else:
-        course = get_object_or_404(
-            Course.objects.select_related("teacher", "category", "teacher__profile")
-            .prefetch_related(
-                "sections__lectures",
-                "tags",
-                "reviews__user",
-            ),
-            slug=slug,
-            status=CourseStatus.PUBLISHED,
-        )
+    is_admin = bool(is_authenticated and (user.is_admin or user.is_staff))
+    is_course_mentor = bool(
+        is_authenticated and user.is_teacher and str(user.id) == course.get("teacher_id")
+    )
+    can_preview_unpublished = is_admin or is_course_mentor
+    if course.get("status") != "published" and not can_preview_unpublished:
+        from django.http import Http404
+        raise Http404("Course not found.")
+    course["thumbnail_url"] = default_storage.url(course["thumbnail"]) if course.get("thumbnail") else ""
 
     # Track view
-    if not request.session.get(f"viewed_course_{course.id}"):
+    if not request.session.get(f"viewed_course_{course['id']}"):
         AnalyticsService.record_course_view(
-            course_id=course.id,
+            course_id=course["id"],
             user_id=user.id if is_authenticated else None,
             ip_address=request.META.get("REMOTE_ADDR"),
             session_key=request.session.session_key or "",
         )
-        course.total_views += 1
-        course.save(update_fields=["total_views"])
-        request.session[f"viewed_course_{course.id}"] = True
+        request.session[f"viewed_course_{course['id']}"] = True
 
     # Identify user roles
-    is_admin = False
-    is_course_mentor = False
-    is_other_teacher = False
+    is_other_teacher = bool(is_authenticated and user.is_teacher and not is_course_mentor)
     is_enrolled = False
     enrollment = None
     course_progress = None
 
     if is_authenticated:
-        is_admin = bool(user.is_admin or user.is_staff)
-        is_course_mentor = bool(user.is_teacher and course.teacher_id == user.id)
-        is_other_teacher = bool(user.is_teacher and not is_course_mentor)
-
         # For student learners (not course creator and not admin): check enrollment
         if not is_course_mentor and not is_admin:
             from apps.enrollments.models import Enrollment
             enrollment = Enrollment.objects.filter(
-                user=user, course=course, status="active"
+                user=user, course_id=course["id"], status="active"
             ).select_related("progress").first()
             if enrollment:
                 is_enrolled = True
                 course_progress = getattr(enrollment, "progress", None)
 
-    # Reviews
-    reviews = course.reviews.filter(is_approved=True, is_hidden=False).select_related("user")[:10]
-
-    # Sections to display
-    if is_course_mentor or is_admin:
-        sections = course.sections.prefetch_related("lectures").order_by("order")
-    else:
-        sections = course.sections.filter(is_published=True).prefetch_related("lectures").order_by("order")
+    sections = course.get("sections", [])
+    if not (is_course_mentor or is_admin):
+        sections = [section for section in sections if section.get("is_published", True)]
+    for section in sections:
+        section["lecture_count"] = len(section.get("lectures", []))
 
     context = {
         "course": course,
@@ -164,31 +173,38 @@ def course_detail_view(request, slug):
         "is_enrolled": is_enrolled,
         "enrollment": enrollment,
         "course_progress": course_progress,
-        "reviews": reviews,
         "sections": sections,
-        "title": f"{course.title} — {course.teacher.full_name}",
-        "meta_description": course.short_description,
-        "og_image": course.thumbnail.url if course.thumbnail else "",
+        "title": f"{course['title']} — {course['teacher']['full_name']}",
+        "meta_description": course.get("short_description", ""),
+        "og_image": course["thumbnail_url"],
     }
     return render(request, "marketplace/course_detail.html", context)
 
 
 def category_list_view(request):
-    categories = Category.objects.filter(is_active=True, parent__isnull=True).prefetch_related("subcategories")
+    categories = [
+        SimpleNamespace(**category)
+        for category in get_course_catalog_repository().list_categories(root_only=True)
+    ]
     return render(request, "marketplace/category_list.html", {"categories": categories})
 
 
 def category_detail_view(request, slug):
-    category = get_object_or_404(Category, slug=slug, is_active=True)
-    courses = Course.objects.filter(
-        category=category, status=CourseStatus.PUBLISHED
-    ).select_related("teacher")
-    paginator = Paginator(courses, 12)
-    page_obj = paginator.get_page(request.GET.get("page", 1))
+    category = get_course_catalog_repository().get_category_by_slug(slug)
+    if category is None:
+        from django.http import Http404
+        raise Http404("Category not found.")
+    category = SimpleNamespace(**category)
+    repository = get_course_catalog_repository()
+    paginator, page_obj = _catalog_page(repository, {
+        "category": category.slug, "search": "", "difficulty": None, "is_free": None,
+        "sort": "newest",
+    }, request.GET.get("page", "1"), 12)
+    courses = page_obj.object_list
     return render(request, "marketplace/category_detail.html", {
         "category": category,
         "page_obj": page_obj,
-        "courses": page_obj.object_list,
+        "courses": courses,
     })
 
 
@@ -196,12 +212,11 @@ def search_view(request):
     q = request.GET.get("q", "").strip()
     courses = []
     if q:
-        courses = Course.objects.filter(
-            status=CourseStatus.PUBLISHED
-        ).filter(
-            Q(title__icontains=q)
-            | Q(short_description__icontains=q)
-        ).select_related("teacher")[:20]
+        _, courses = get_course_catalog_repository().list_published(
+            category=None, search=q, difficulty=None, is_free=None,
+            include_related_search=True, limit=20, offset=0,
+        )
+        courses = _catalog_cards(courses)
     if request.htmx:
         return render(request, "marketplace/_search_results.html", {"courses": courses, "q": q})
     return render(request, "marketplace/search.html", {"courses": courses, "q": q})

@@ -6,7 +6,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
-from apps.courses.models import Category, Course, CourseStatus
+from apps.courses.models import Course, CourseStatus
 from apps.courses.serializers import (
     CategorySerializer,
     CourseCatalogRecordSerializer,
@@ -102,4 +102,11 @@ class CourseDetailAPIView(generics.RetrieveAPIView):
 class CategoryListAPIView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = CategorySerializer
-    queryset = Category.objects.filter(is_active=True).order_by("order", "name")
+
+    def list(self, request, *args, **kwargs):
+        records = get_course_catalog_repository().list_categories()
+        page = self.paginate_queryset(records)
+        serializer = self.get_serializer(page if page is not None else records, many=True)
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)

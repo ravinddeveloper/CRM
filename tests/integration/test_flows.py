@@ -8,7 +8,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 
 from tests.factories import (
-    make_admin, make_teacher, make_student, make_course,
+    make_admin, make_teacher, make_student, make_course, make_category,
     make_section, make_lecture, make_enrollment, make_order,
 )
 
@@ -105,6 +105,17 @@ class TestMarketplaceFlow(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Django REST Framework")
+
+    def test_category_page_lists_courses_through_catalog_repository(self):
+        category = make_category(name="Marketplace category")
+        make_course(category=category, status="published", title="Category course")
+
+        response = self.client.get(
+            reverse("marketplace:category_detail", kwargs={"slug": category.slug})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Category course")
 
 
 class TestStudentDashboard(TestCase):

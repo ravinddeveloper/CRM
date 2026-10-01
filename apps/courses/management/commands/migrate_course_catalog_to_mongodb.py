@@ -1,9 +1,9 @@
 """Backfill published-course API projections into MongoDB."""
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.courses.models import Course, CourseCatalogSyncEvent
+from apps.courses.models import Category, CategoryCatalogSyncEvent, Course, CourseCatalogSyncEvent
 from apps.courses.repositories.mongo import MongoCourseCatalogRepository
-from apps.courses.tasks import process_catalog_event
+from apps.courses.tasks import process_catalog_event, process_category_catalog_event
 from infrastructure.database.config import DatabaseEngine, get_database_engine
 
 
@@ -23,7 +23,10 @@ class Command(BaseCommand):
             if options["drain_outbox"]:
                 raise CommandError("--dry-run cannot be combined with --drain-outbox.")
             count = Course.objects.count()
-            self.stdout.write(self.style.SUCCESS(f"Dry run: {count} courses are available for projection."))
+            category_count = Category.objects.count()
+            self.stdout.write(self.style.SUCCESS(
+                f"Dry run: {count} courses and {category_count} categories are available for projection."
+            ))
             return
         if not options["drain_outbox"] and get_database_engine() is not DatabaseEngine.SQL:
             raise CommandError("Run the initial SQL snapshot while DATABASE_ENGINE=sql.")
@@ -35,6 +38,12 @@ class Command(BaseCommand):
                 for course in Course.objects.select_related(
                     "category", "teacher", "teacher__profile"
                 ).prefetch_related("tags", "sections__lectures").order_by("pk").iterator(chunk_size=batch_size)
+            )
+            categories_imported = sum(
+                bool(repository.import_sql_category(category))
+                for category in Category.objects.select_related("parent").order_by("pk").iterator(
+                    chunk_size=batch_size
+                )
             )
         except Exception as exc:
             raise CommandError("Course catalog snapshot failed; it is safe to rerun after fixing MongoDB.") from exc
@@ -51,6 +60,19 @@ class Command(BaseCommand):
                         break
                     for event_id in event_ids:
                         processed += bool(process_catalog_event(event_id))
+            max_category_event_id = CategoryCatalogSyncEvent.objects.order_by("-id").values_list(
+                "pk", flat=True
+            ).first()
+            if max_category_event_id is not None:
+                while True:
+                    event_ids = list(CategoryCatalogSyncEvent.objects.filter(
+                        processed_at__isnull=True, pk__lte=max_category_event_id
+                    ).order_by("created_at", "id").values_list("pk", flat=True)[:batch_size])
+                    if not event_ids:
+                        break
+                    for event_id in event_ids:
+                        processed += bool(process_category_catalog_event(event_id))
         self.stdout.write(self.style.SUCCESS(
-            f"Course catalog snapshot complete: {imported} inserted, {processed} outbox events processed."
+            f"Course catalog snapshot complete: {imported} courses and {categories_imported} categories inserted, "
+            f"{processed} outbox events processed."
         ))
