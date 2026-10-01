@@ -251,7 +251,7 @@ python manage.py migrate_course_catalog_to_mongodb --dry-run --settings=config.s
 python manage.py migrate_course_catalog_to_mongodb --drain-outbox --settings=config.settings.development
 ```
 
-Then select `DATABASE_ENGINE=mongodb` and keep catalog synchronization enabled. The API list uses the Mongo projection; course detail, teacher authoring, and the rest of the LMS remain SQL-backed. The projection carries course status, category and teacher display fields, and the existing list filters; Mongo list results are eventually consistent with SQL edits.
+Then start the optional Mongo service (`docker compose --profile mongodb up -d`), select `DATABASE_ENGINE=mongodb`, and keep catalog synchronization enabled. The API list uses the Mongo projection; course detail, teacher authoring, and the rest of the LMS remain SQL-backed. The projection carries course status, category and teacher display fields, and the existing list filters; Mongo list results are eventually consistent with SQL edits.
 
 For an account cutover rehearsal, apply migrations, set `MONGO_ACCOUNT_SYNC_ENABLED=True` while `DATABASE_ENGINE=sql`, and restart web, worker, and beat processes. This starts durable capture before the initial snapshot. The command copies SQL identities, password hashes, privilege/group grants, profiles, and authentication-token state while leaving SQL untouched:
 

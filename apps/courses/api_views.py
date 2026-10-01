@@ -32,8 +32,8 @@ class CourseListAPIView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         paginator = self.paginator
         page_size = paginator.get_page_size(request) or paginator.page_size
-        page_number = paginator.get_page_number(request, None)
-        if page_number == paginator.last_page_strings[0]:
+        page_number = request.query_params.get(paginator.page_query_param, 1)
+        if page_number in paginator.last_page_strings:
             requested_page = None
         else:
             try:

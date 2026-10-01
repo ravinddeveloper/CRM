@@ -2,8 +2,6 @@ import os
 from uuid import uuid4
 
 import pytest
-from django.contrib.auth import get_user_model
-
 MONGO_URI = os.environ.get("MONGO_URI")
 if not MONGO_URI:
     pytest.skip("Set MONGO_URI to run MongoDB integration tests.", allow_module_level=True)
