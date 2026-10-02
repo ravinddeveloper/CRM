@@ -2,31 +2,33 @@
 {% load static %}
 
 {% block title %}Explore Expert-Led Online Courses — {{ PLATFORM_NAME }}{% endblock %}
-{% block meta_description %}Discover top-rated online courses in development, design, business, and more. Learn from industry experts at your own pace.{% endblock %}
+{% block meta_description %}Discover top-rated online courses in development, design, business, and AI. Learn from industry experts at your own pace with verified certifications.{% endblock %}
 
 {% block body %}
-<div class="min-h-screen bg-gray-950 text-gray-100">
+<div class="min-h-screen bg-gray-950 text-gray-100 flex flex-col selection:bg-purple-500 selection:text-white">
 
   <!-- ── Top Navigation ────────────────────────────────────────────────── -->
-  <nav class="sticky top-0 z-40 bg-gray-900/90 backdrop-blur-md border-b border-gray-800">
+  <nav class="sticky top-0 z-40 bg-gray-900/90 backdrop-blur-xl border-b border-gray-800/80 transition-all">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <a href="/" class="flex items-center gap-3 group">
-          <div class="w-9 h-9 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
+      <div class="flex items-center justify-between h-16 gap-4">
+        
+        <!-- Brand -->
+        <a href="/" class="flex items-center gap-3 group flex-shrink-0">
+          <div class="w-9 h-9 bg-gradient-to-tr from-purple-600 via-indigo-600 to-brand-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform">
             {% if PLATFORM_LOGO_URL %}<img src="{{ PLATFORM_LOGO_URL }}" alt="{{ PLATFORM_NAME }}" class="w-full h-full object-contain rounded-xl">{% else %}<span class="text-white font-extrabold text-base">{{ PLATFORM_NAME|first|upper }}</span>{% endif %}
           </div>
-          <span class="font-bold text-xl text-white group-hover:text-brand-400 transition-colors tracking-tight">{{ PLATFORM_NAME }}</span>
+          <span class="font-extrabold text-xl text-white group-hover:text-purple-300 transition-colors tracking-tight">{{ PLATFORM_NAME }}</span>
         </a>
 
         <!-- Global Search Bar (HTMX live search) -->
-        <div class="hidden md:flex flex-1 max-w-md mx-8 relative" x-data="{ open: false }">
+        <div class="hidden md:flex flex-1 max-w-md mx-4 relative" x-data="{ open: false }">
           <form method="get" action="{% url 'marketplace:course_list' %}" class="w-full">
             <div class="relative">
               <input type="search"
                      name="q"
                      value="{{ q }}"
                      placeholder="Search courses, skills, or teachers..."
-                     class="w-full pl-10 pr-4 py-2 bg-gray-800/80 border border-gray-700 rounded-xl text-sm text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
+                     class="w-full pl-10 pr-4 py-2 bg-gray-800/80 border border-gray-700/80 rounded-xl text-sm text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                      hx-get="{% url 'marketplace:search' %}"
                      hx-trigger="keyup changed delay:300ms, search"
                      hx-target="#search-results-dropdown"
@@ -43,22 +45,42 @@
                class="absolute top-full mt-2 w-full bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50"></div>
         </div>
 
+        <!-- Center Links -->
+        <div class="hidden lg:flex items-center gap-1.5 text-xs font-semibold text-gray-300">
+          <a href="{% url 'marketplace:course_list' %}" class="px-3 py-1.5 rounded-lg text-white hover:bg-gray-800 transition-colors">
+            Courses
+          </a>
+          <a href="{% url 'notifications:announcement_list' %}" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-gray-800 transition-colors flex items-center gap-1.5">
+            <span>Announcements</span>
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          </a>
+          {% if request.user.is_staff or request.user.role == 'admin' %}
+          <a href="{% url 'admin_panel:dashboard' %}" class="px-3 py-1.5 rounded-lg text-purple-400 hover:text-purple-300 hover:bg-purple-950/40 border border-purple-500/20 transition-colors">
+            Admin Panel
+          </a>
+          {% elif request.user.role == 'teacher' %}
+          <a href="{% url 'teacher_portal:dashboard' %}" class="px-3 py-1.5 rounded-lg text-indigo-400 hover:text-indigo-300 hover:bg-indigo-950/40 border border-indigo-500/20 transition-colors">
+            Teacher Studio
+          </a>
+          {% endif %}
+        </div>
+
         <!-- Auth Navigation -->
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 flex-shrink-0">
           {% if request.user.is_authenticated %}
             <a href="{% url 'accounts:student_dashboard' %}"
-               class="px-4 py-2 text-sm font-medium text-gray-200 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-xl transition-all">
+               class="px-3.5 py-1.5 text-xs font-bold text-gray-200 hover:text-white bg-gray-800/90 hover:bg-gray-700 rounded-xl border border-gray-700/80 transition-all">
               Dashboard
             </a>
             <!-- Profile Option Dropdown -->
             {% include "base/_profile_dropdown.html" %}
           {% else %}
             <a href="{% url 'accounts:login' %}"
-               class="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors">
+               class="px-3.5 py-1.5 text-xs font-semibold text-gray-300 hover:text-white transition-colors">
               Sign In
             </a>
             <a href="{% url 'accounts:register' %}"
-               class="px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 rounded-xl shadow-lg shadow-brand-500/25 transition-all">
+               class="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-purple-600 via-indigo-600 to-brand-500 hover:from-purple-500 hover:to-brand-400 rounded-xl shadow-md shadow-purple-500/25 transition-all transform hover:-translate-y-0.5">
               Get Started
             </a>
           {% endif %}
@@ -68,32 +90,43 @@
   </nav>
 
   <!-- ── Hero Banner ───────────────────────────────────────────────────── -->
-  <header class="relative overflow-hidden bg-gradient-to-b from-gray-900 to-gray-950 border-b border-gray-800/80 py-16 sm:py-20">
-    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-900/20 via-transparent to-transparent pointer-events-none"></div>
+  <header class="relative overflow-hidden bg-gradient-to-b from-gray-900 via-gray-950 to-gray-950 border-b border-gray-800/80 pt-16 pb-12 sm:pt-20 sm:pb-16">
+    <!-- Ambient mesh glow background -->
+    <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-tr from-purple-600/20 via-indigo-600/20 to-brand-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-      <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20 mb-4">
-        ✨ Over 500+ Premium Courses Available
-      </span>
-      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight">
+      
+      <!-- Announcement / Feature Badge -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-purple-500/10 text-purple-300 border border-purple-500/20 mb-6 shadow-inner">
+        <span class="flex h-2 w-2 relative">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+        </span>
+        <span>Over 500+ Premium Courses Available</span>
+      </div>
+
+      <!-- Main Headline with radiant contrast -->
+      <h1 class="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight max-w-4xl mx-auto">
         Master Real-World Skills with <br class="hidden sm:inline">
-        <span class="bg-clip-text text-transparent bg-gradient-to-r from-brand-400 via-indigo-400 to-purple-400">
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-300 to-pink-400">
           Industry-Leading Experts
         </span>
       </h1>
-      <p class="mt-4 max-w-2xl mx-auto text-base sm:text-lg text-gray-400">
+
+      <p class="mt-4 max-w-2xl mx-auto text-sm sm:text-base lg:text-lg text-gray-300 leading-relaxed font-normal">
         Advance your career with hands-on video tutorials, downloadable resources, project-based assignments, and verified certificates.
       </p>
 
       <!-- Category Filter Pills -->
       {% if categories %}
-      <div class="mt-8 flex flex-wrap items-center justify-center gap-2">
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-2 max-w-3xl mx-auto">
         <a href="{% url 'marketplace:course_list' %}"
-           class="px-4 py-1.5 rounded-full text-xs font-semibold transition-all {% if not selected_category %}bg-brand-600 text-white shadow-md shadow-brand-500/30{% else %}bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700{% endif %}">
+           class="px-4 py-1.5 rounded-full text-xs font-bold transition-all {% if not selected_category %}bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/30{% else %}bg-gray-900 text-gray-300 hover:bg-gray-800 hover:text-white border border-gray-800{% endif %}">
           All Courses
         </a>
         {% for cat in categories %}
         <a href="{% url 'marketplace:course_list' %}?category={{ cat.slug }}"
-           class="px-4 py-1.5 rounded-full text-xs font-semibold transition-all {% if selected_category == cat.slug %}bg-brand-600 text-white shadow-md shadow-brand-500/30{% else %}bg-gray-800/80 text-gray-300 hover:bg-gray-700 hover:text-white border border-gray-700{% endif %}">
+           class="px-4 py-1.5 rounded-full text-xs font-semibold transition-all {% if selected_category == cat.slug %}bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/30{% else %}bg-gray-900 text-gray-300 hover:bg-gray-800 hover:text-white border border-gray-800{% endif %}">
           {{ cat.name }}
         </a>
         {% endfor %}
@@ -102,21 +135,101 @@
     </div>
   </header>
 
+  <!-- ── Trust & Impact Metrics Bar ────────────────────────────────────── -->
+  <section class="border-b border-gray-800/80 bg-gray-900/40 py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
+        <div class="p-3">
+          <p class="text-2xl sm:text-3xl font-extrabold text-white">500+</p>
+          <p class="text-xs sm:text-sm text-gray-400 font-medium mt-0.5">Top-Rated Courses</p>
+        </div>
+        <div class="p-3">
+          <p class="text-2xl sm:text-3xl font-extrabold text-indigo-400">25,000+</p>
+          <p class="text-xs sm:text-sm text-gray-400 font-medium mt-0.5">Active Learners</p>
+        </div>
+        <div class="p-3">
+          <p class="text-2xl sm:text-3xl font-extrabold text-emerald-400">4.9 / 5.0</p>
+          <p class="text-xs sm:text-sm text-gray-400 font-medium mt-0.5">Student Satisfaction</p>
+        </div>
+        <div class="p-3">
+          <p class="text-2xl sm:text-3xl font-extrabold text-purple-400">100%</p>
+          <p class="text-xs sm:text-sm text-gray-400 font-medium mt-0.5">Verified Certificates</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Live Announcements Strip (If Present) ─────────────────────────── -->
+  {% if latest_announcements %}
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 w-full">
+    <div class="rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/20 via-gray-900/60 to-purple-950/20 p-4 sm:p-5">
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pb-3 border-b border-gray-800">
+        <div class="flex items-center gap-2.5">
+          <span class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-sm">
+            📢
+          </span>
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              Official Platform Announcements & Updates
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">Live</span>
+            </h2>
+            <p class="text-xs text-gray-400">Stay informed with the latest updates from teachers and administrators.</p>
+          </div>
+        </div>
+        <a href="{% url 'notifications:announcement_list' %}" class="text-xs text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 transition-colors flex-shrink-0">
+          <span>View all announcements</span>
+          <span>→</span>
+        </a>
+      </div>
+
+      <div class="mt-3.5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        {% for ann in latest_announcements %}
+        <a href="{% url 'notifications:announcement_detail' ann.id %}"
+           class="p-3 rounded-xl bg-gray-950/80 border border-gray-800/80 hover:border-amber-500/40 hover:bg-gray-900/60 transition-all flex flex-col justify-between group">
+          <div>
+            <div class="flex items-center justify-between gap-1 mb-1.5">
+              {% if ann.priority == 'urgent' %}
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Urgent</span>
+              {% elif ann.priority == 'high' %}
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Important</span>
+              {% else %}
+              <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-800 text-gray-300">Notice</span>
+              {% endif %}
+              <span class="text-[10px] text-gray-500">{{ ann.created_at|date:"M j" }}</span>
+            </div>
+            <h3 class="text-xs font-bold text-white group-hover:text-amber-300 transition-colors line-clamp-1">
+              {% if ann.is_pinned %}📌 {% endif %}{{ ann.title }}
+            </h3>
+            <p class="text-[11px] text-gray-400 mt-1 line-clamp-2 leading-relaxed">
+              {{ ann.content }}
+            </p>
+          </div>
+          <div class="mt-2 pt-2 border-t border-gray-800/60 flex items-center justify-between text-[10px] text-gray-500">
+            <span>By {{ ann.author.first_name|default:ann.author.email }}</span>
+            <span class="text-indigo-400 font-semibold group-hover:translate-x-0.5 transition-transform">Read →</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
   <!-- ── Main Catalog Grid ─────────────────────────────────────────────── -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full flex-1">
     <div class="flex flex-col lg:flex-row gap-8">
 
       <!-- Left Filters Sidebar -->
       <aside class="w-full lg:w-64 flex-shrink-0">
-        <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 sticky top-24">
+        <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 sticky top-24 backdrop-blur-md">
           <div class="flex items-center justify-between pb-4 border-b border-gray-800">
-            <h2 class="text-base font-bold text-white">Filter Courses</h2>
+            <h2 class="text-sm font-bold text-white uppercase tracking-wider">Filter Courses</h2>
             {% if selected_category or selected_difficulty or q or price_min or price_max %}
-            <a href="{% url 'marketplace:course_list' %}" class="text-xs text-brand-400 hover:underline">Reset</a>
+            <a href="{% url 'marketplace:course_list' %}" class="text-xs text-purple-400 hover:text-purple-300 hover:underline font-semibold">Reset</a>
             {% endif %}
           </div>
 
-          <form method="get" action="{% url 'marketplace:course_list' %}" class="mt-6 space-y-6">
+          <form method="get" action="{% url 'marketplace:course_list' %}" class="mt-5 space-y-5">
             {% if q %}
             <input type="hidden" name="q" value="{{ q }}">
             {% endif %}
@@ -125,7 +238,7 @@
             <div>
               <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Category</label>
               <select name="category" onchange="this.form.submit()"
-                      class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                      class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-gray-200 focus:ring-2 focus:ring-purple-500 focus:outline-none">
                 <option value="">All Categories</option>
                 {% for cat in categories %}
                 <option value="{{ cat.slug }}" {% if selected_category == cat.slug %}selected{% endif %}>{{ cat.name }}</option>
@@ -137,7 +250,7 @@
             <div>
               <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Difficulty</label>
               <select name="difficulty" onchange="this.form.submit()"
-                      class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                      class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-gray-200 focus:ring-2 focus:ring-purple-500 focus:outline-none">
                 <option value="">All Levels</option>
                 <option value="beginner" {% if selected_difficulty == "beginner" %}selected{% endif %}>Beginner</option>
                 <option value="intermediate" {% if selected_difficulty == "intermediate" %}selected{% endif %}>Intermediate</option>
@@ -150,11 +263,13 @@
             <div class="grid grid-cols-2 gap-2">
               <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Min price
                 <input type="number" min="0" step="0.01" name="price_min" value="{{ price_min }}"
-                       class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200">
+                       placeholder="0"
+                       class="mt-1.5 w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-purple-500">
               </label>
               <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Max price
                 <input type="number" min="0" step="0.01" name="price_max" value="{{ price_max }}"
-                       class="mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200">
+                       placeholder="1000"
+                       class="mt-1.5 w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-purple-500">
               </label>
             </div>
 
@@ -162,7 +277,7 @@
             <div>
               <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Sort By</label>
               <select name="sort" onchange="this.form.submit()"
-                      class="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                      class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3 py-2 text-xs text-gray-200 focus:ring-2 focus:ring-purple-500 focus:outline-none">
                 <option value="newest" {% if sort == "newest" %}selected{% endif %}>Newest First</option>
                 <option value="popular" {% if sort == "popular" %}selected{% endif %}>Most Popular</option>
                 <option value="rating" {% if sort == "rating" %}selected{% endif %}>Highest Rated</option>
@@ -172,7 +287,7 @@
             </div>
 
             <button type="submit"
-                    class="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-sm font-semibold border border-gray-700 transition-all">
+                    class="w-full py-2.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20 transition-all">
               Apply Filters
             </button>
           </form>
@@ -180,27 +295,33 @@
       </aside>
 
       <!-- Right Course List -->
-      <section class="flex-1">
+      <section class="flex-1 min-w-0">
         <!-- Result count & Header -->
-        <div class="flex items-center justify-between mb-6">
-          <p class="text-sm text-gray-400">
-            Showing <span class="font-bold text-white">{{ courses|length }}</span> of <span class="font-bold text-white">{{ total_count|default:courses|length }}</span> courses
-            {% if q %} for "<span class="text-brand-400">{{ q }}</span>"{% endif %}
+        <div class="flex flex-wrap items-center justify-between mb-6 gap-2">
+          <p class="text-xs sm:text-sm text-gray-400">
+            Showing <span class="font-bold text-white">{{ courses|length }}</span> of <span class="font-bold text-white">{{ total_count }}</span> courses
+            {% if q %} for "<span class="text-purple-400 font-semibold">{{ q }}</span>"{% endif %}
+            {% if selected_category %} in <span class="text-indigo-400 font-semibold">{{ selected_category }}</span>{% endif %}
           </p>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500">Sorted by:</span>
+            <span class="text-xs font-semibold text-gray-300 capitalize">{{ sort|default:"Newest" }}</span>
+          </div>
         </div>
 
         {% if courses %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {% for course in courses %}
-          <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 hover:shadow-2xl hover:shadow-brand-500/10 transition-all flex flex-col group">
+          <div class="bg-gray-900/80 border border-gray-800 rounded-2xl overflow-hidden hover:border-gray-700 hover:shadow-2xl hover:shadow-purple-500/10 transition-all flex flex-col group">
             <!-- Thumbnail -->
             <a href="{% url 'marketplace:course_detail' slug=course.slug %}" class="block relative aspect-video bg-gray-800 overflow-hidden">
               {% if course.thumbnail_url %}
               <img src="{{ course.thumbnail_url }}" alt="{{ course.title }}"
                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
               {% else %}
-              <div class="w-full h-full bg-gradient-to-br from-gray-800 via-gray-900 to-indigo-950 flex items-center justify-center">
-                <span class="text-3xl font-extrabold text-gray-700 group-hover:text-brand-500 transition-colors">
+              <div class="w-full h-full bg-gradient-to-tr from-gray-900 via-purple-950/40 to-indigo-950 flex items-center justify-center p-4">
+                <span class="text-3xl font-black text-gray-700 group-hover:text-purple-400 transition-colors">
                   {{ course.title|first }}
                 </span>
               </div>
@@ -212,7 +333,7 @@
                   Featured
                 </span>
                 {% endif %}
-                <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold capitalize bg-gray-900/80 backdrop-blur-md text-gray-300 border border-gray-700">
+                <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold capitalize bg-gray-900/85 backdrop-blur-md text-gray-200 border border-gray-700/80">
                   {{ course.difficulty }}
                 </span>
               </div>
@@ -222,11 +343,11 @@
             <div class="p-5 flex-1 flex flex-col justify-between">
               <div>
                 {% if course.category %}
-                <span class="text-[11px] font-semibold text-brand-400 uppercase tracking-wider">
+                <span class="text-[10px] font-bold text-purple-400 uppercase tracking-wider block mb-1">
                   {{ course.category.name }}
                 </span>
                 {% endif %}
-                <h3 class="text-base font-bold text-white mt-1 group-hover:text-brand-300 transition-colors line-clamp-2">
+                <h3 class="text-sm sm:text-base font-bold text-white group-hover:text-purple-300 transition-colors line-clamp-2 leading-snug">
                   <a href="{% url 'marketplace:course_detail' slug=course.slug %}">{{ course.title }}</a>
                 </h3>
                 <p class="text-xs text-gray-400 mt-2 line-clamp-2 leading-relaxed">
@@ -237,24 +358,24 @@
               <!-- Meta Footer -->
               <div class="mt-5 pt-4 border-t border-gray-800 flex items-center justify-between">
                 <!-- Teacher -->
-                <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold">
+                <div class="flex items-center gap-2 min-w-0">
+                  <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                     {{ course.teacher_first_name|first|default:course.teacher_email|first|upper }}
                   </div>
-                  <span class="text-xs text-gray-400 truncate max-w-[100px]">{{ course.teacher_name|default:course.teacher_email }}</span>
+                  <span class="text-xs text-gray-400 truncate max-w-[90px]">{{ course.teacher_name|default:course.teacher_email }}</span>
                 </div>
 
                 <!-- Price -->
-                <div class="text-right">
+                <div class="text-right flex-shrink-0">
                   {% if course.is_free %}
-                  <span class="text-base font-extrabold text-emerald-400">Free</span>
+                  <span class="text-sm sm:text-base font-extrabold text-emerald-400">Free</span>
                   {% elif course.discount_price %}
                   <div class="flex items-baseline gap-1.5">
-                    <span class="text-sm font-bold text-white">{{ course.currency }} {{ course.discount_price }}</span>
+                    <span class="text-sm sm:text-base font-bold text-white">{{ course.currency }} {{ course.discount_price }}</span>
                     <span class="text-xs text-gray-500 line-through">{{ course.price }}</span>
                   </div>
                   {% else %}
-                  <span class="text-base font-bold text-white">{{ course.currency }} {{ course.price }}</span>
+                  <span class="text-sm sm:text-base font-bold text-white">{{ course.currency }} {{ course.price }}</span>
                   {% endif %}
                 </div>
               </div>
@@ -268,16 +389,16 @@
         <div class="mt-12 flex items-center justify-center gap-2">
           {% if page_obj.has_previous %}
           <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if selected_category %}&category={{ selected_category|urlencode }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty|urlencode }}{% endif %}{% if sort %}&sort={{ sort|urlencode }}{% endif %}{% if price_min %}&price_min={{ price_min|urlencode }}{% endif %}{% if price_max %}&price_max={{ price_max|urlencode }}{% endif %}"
-             class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-800">
+             class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs font-semibold text-gray-300 hover:bg-gray-800 transition-all">
             Previous
           </a>
           {% endif %}
-          <span class="text-sm text-gray-400 px-4">
+          <span class="text-xs font-semibold text-gray-400 px-4 py-2 bg-gray-900/60 rounded-xl border border-gray-800/80">
             Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
           </span>
           {% if page_obj.has_next %}
           <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if selected_category %}&category={{ selected_category|urlencode }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty|urlencode }}{% endif %}{% if sort %}&sort={{ sort|urlencode }}{% endif %}{% if price_min %}&price_min={{ price_min|urlencode }}{% endif %}{% if price_max %}&price_max={{ price_max|urlencode }}{% endif %}"
-             class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-sm font-medium text-gray-300 hover:bg-gray-800">
+             class="px-4 py-2 bg-gray-900 border border-gray-800 rounded-xl text-xs font-semibold text-gray-300 hover:bg-gray-800 transition-all">
             Next
           </a>
           {% endif %}
@@ -287,13 +408,13 @@
         {% else %}
         <!-- Empty State -->
         <div class="bg-gray-900/40 border border-gray-800 rounded-2xl p-16 text-center">
-          <div class="text-5xl mb-4">🔍</div>
-          <h3 class="text-xl font-bold text-white">No courses found</h3>
-          <p class="text-gray-400 text-sm mt-1 max-w-md mx-auto">
+          <div class="text-4xl mb-3">🔍</div>
+          <h3 class="text-lg font-bold text-white">No courses found</h3>
+          <p class="text-gray-400 text-xs sm:text-sm mt-1 max-w-md mx-auto">
             We couldn't find any courses matching your criteria. Try adjusting your filters or search keywords.
           </p>
           <a href="{% url 'marketplace:course_list' %}"
-             class="mt-6 inline-block px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-semibold transition-all">
+             class="mt-5 inline-block px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-purple-500/20">
             Clear all filters
           </a>
         </div>
@@ -302,10 +423,71 @@
     </div>
   </main>
 
+  <!-- ── Feature Value Props Strip ────────────────────────────────────── -->
+  <section class="border-t border-gray-800/80 bg-gray-900/30 py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-xs uppercase tracking-wider font-bold text-purple-400">Why {{ PLATFORM_NAME }}</span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">Built for Serious Learners & Professionals</h2>
+        <p class="text-xs sm:text-sm text-gray-400 mt-2">Everything you need to level up your career with verifiable competence.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="p-6 rounded-2xl border border-gray-800 bg-gray-950/60 hover:border-gray-700 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-lg mb-4">
+            🎓
+          </div>
+          <h3 class="text-base font-bold text-white">Expert-Led Instruction</h3>
+          <p class="text-xs text-gray-400 mt-2 leading-relaxed">Learn directly from senior industry practitioners, architects, and seasoned mentors.</p>
+        </div>
+
+        <div class="p-6 rounded-2xl border border-gray-800 bg-gray-950/60 hover:border-gray-700 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-lg mb-4">
+            💻
+          </div>
+          <h3 class="text-base font-bold text-white">Project-Driven Labs</h3>
+          <p class="text-xs text-gray-400 mt-2 leading-relaxed">Build production-grade projects you can directly showcase to employers and clients.</p>
+        </div>
+
+        <div class="p-6 rounded-2xl border border-gray-800 bg-gray-950/60 hover:border-gray-700 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-lg mb-4">
+            ⏱️
+          </div>
+          <h3 class="text-base font-bold text-white">Interactive Schedules</h3>
+          <p class="text-xs text-gray-400 mt-2 leading-relaxed">Join live classes, workshops, and 1-on-1 office hours with seamless calendar booking.</p>
+        </div>
+
+        <div class="p-6 rounded-2xl border border-gray-800 bg-gray-950/60 hover:border-gray-700 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-lg mb-4">
+            📜
+          </div>
+          <h3 class="text-base font-bold text-white">Verified Certificates</h3>
+          <p class="text-xs text-gray-400 mt-2 leading-relaxed">Earn tamper-proof certificates with public verification URLs to share on LinkedIn and resumes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ── Footer ────────────────────────────────────────────────────────── -->
-  <footer class="bg-gray-900 border-t border-gray-800 mt-20 py-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-400">
-      <p>© {% now "Y" %} {{ PLATFORM_NAME }}. All rights reserved.</p>
+  <footer class="bg-gray-900 border-t border-gray-800 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center font-bold text-white text-xs">
+            {{ PLATFORM_NAME|first|upper }}
+          </div>
+          <span class="font-bold text-lg text-white">{{ PLATFORM_NAME }}</span>
+          <span class="text-xs text-gray-500">· Premium Learning Management</span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-6 text-xs text-gray-400">
+          <a href="{% url 'marketplace:course_list' %}" class="hover:text-white transition-colors">Courses</a>
+          <a href="{% url 'notifications:announcement_list' %}" class="hover:text-white transition-colors">Announcements</a>
+          <a href="{% url 'accounts:student_dashboard' %}" class="hover:text-white transition-colors">Student Portal</a>
+        </div>
+
+        <p class="text-xs text-gray-500">© {% now "Y" %} {{ PLATFORM_NAME }}. All rights reserved.</p>
+      </div>
     </div>
   </footer>
 

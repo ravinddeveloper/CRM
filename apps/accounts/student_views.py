@@ -1,4 +1,5 @@
 """Student views - dashboard, learning view, certificates, orders."""
+from django.db import models
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
@@ -53,6 +54,8 @@ def student_dashboard_view(request):
         })
 
     from apps.progress.models import StudentNote
+    from apps.notifications.models import Announcement
+
     student_notes = (
         StudentNote.objects.filter(user=user)
         .select_related("course", "lecture")
@@ -61,11 +64,20 @@ def student_dashboard_view(request):
 
     in_progress = [item for item in enrollment_list if 0 < item["completion_percentage"] < 100]
 
+    enrolled_course_ids = [item["course"].id for item in enrollment_list if item.get("course")]
+    announcements = (
+        Announcement.objects.filter(is_published=True)
+        .filter(models.Q(course__isnull=True) | models.Q(course_id__in=enrolled_course_ids))
+        .select_related("author", "course")
+        .order_by("-is_pinned", "-created_at")[:5]
+    )
+
     context = {
         "enrollments": enrollments,
         "courses": enrollment_list,
         "in_progress": in_progress,
         "student_notes": student_notes,
+        "announcements": announcements,
         "stats": {
             "total_courses": total_courses,
             "completed_courses": completed_count,

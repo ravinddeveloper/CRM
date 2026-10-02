@@ -128,14 +128,10 @@ def build_portal_theme_css(palette):
             rules.append(f"{_class_selector(utility)}{{--tw-ring-color:var(--portal-primary)!important}}")
         else:
             rules.append(f"{_class_selector(utility)}{{border-color:var(--portal-primary)!important}}")
-    gradient_directions = {
-        "to-r": "to right", "to-l": "to left", "to-t": "to top", "to-b": "to bottom",
-        "to-tr": "to top right", "to-tl": "to top left", "to-br": "to bottom right", "to-bl": "to bottom left",
-    }
-    for direction, css_direction in gradient_directions.items():
-        rules.append(
-            f'{_class_selector(f"bg-gradient-{direction}")}{{background-image:linear-gradient({css_direction},var(--portal-primary),var(--portal-accent))!important}}'
-        )
+    # Dedicated portal gradient utilities without stomping on Tailwind's from-*/to-* stops
+    rules.append(
+        '.bg-gradient-portal{background-image:linear-gradient(to right,var(--portal-primary),var(--portal-accent))!important}'
+    )
     for utility in ("shadow-brand-500/10", "shadow-brand-500/20", "shadow-brand-500/25", "shadow-purple-500/20", "shadow-purple-500/25"):
         rules.append(f"{_class_selector(utility)}{{--tw-shadow-color:var(--portal-primary)!important}}")
     for family in ("brand", "indigo", "purple"):

@@ -10,6 +10,10 @@ dependencies = [
     "pymongo>=4.8,<5.0",
     "pyotp>=2.10.0",
     "qrcode>=8.2",
+    # Google Drive storage backend (STORAGE_BACKEND=gdrive)
+    "google-api-python-client>=2.120",
+    "google-auth>=2.29",
+    "google-auth-httplib2>=0.2",
 ]
 
 [tool.pytest.ini_options]

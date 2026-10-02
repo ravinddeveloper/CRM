@@ -30,6 +30,65 @@
         {% include "dashboard/student/_stat_card.html" with label="Learning Hours" value=stats.total_hours icon="⏱️" %}
       </div>
 
+      <!-- Announcements Section -->
+      {% if announcements %}
+      <section class="mb-8 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-950/20 via-gray-900/80 to-purple-950/20 p-5">
+        <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-800">
+          <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-sm">
+              📢
+            </span>
+            <div>
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                Announcements & Updates
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">Important</span>
+              </h2>
+              <p class="text-xs text-gray-400">Updates from administrators and your course instructors.</p>
+            </div>
+          </div>
+          <a href="{% url 'notifications:announcement_list' %}" class="text-xs text-amber-400 hover:text-amber-300 font-bold transition-colors">
+            All Announcements →
+          </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {% for ann in announcements %}
+          <a href="{% url 'notifications:announcement_detail' ann.id %}"
+             class="p-4 rounded-xl bg-gray-950/80 border border-gray-800 hover:border-amber-500/40 hover:bg-gray-900/60 transition-all flex flex-col justify-between group">
+            <div>
+              <div class="flex items-center justify-between gap-1 mb-2">
+                {% if ann.priority == 'urgent' %}
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Urgent</span>
+                {% elif ann.priority == 'high' %}
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Important</span>
+                {% else %}
+                <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-800 text-gray-300">Notice</span>
+                {% endif %}
+                <span class="text-[10px] text-gray-500">{{ ann.created_at|date:"M j, H:i" }}</span>
+              </div>
+              <h3 class="text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors line-clamp-1">
+                {% if ann.is_pinned %}📌 {% endif %}{{ ann.title }}
+              </h3>
+              <p class="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">
+                {{ ann.content }}
+              </p>
+            </div>
+            <div class="mt-3 pt-2 border-t border-gray-800/60 flex items-center justify-between text-[11px] text-gray-500">
+              <span>
+                {% if ann.course %}
+                  <span class="text-indigo-400 font-medium">{{ ann.course.title|truncatechars:20 }}</span>
+                {% else %}
+                  <span class="text-purple-400 font-medium">Platform-Wide</span>
+                {% endif %}
+              </span>
+              <span class="text-amber-400 font-semibold group-hover:translate-x-0.5 transition-transform">Details →</span>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
       <!-- Continue Learning -->
       {% if in_progress %}
       <section class="mb-8">

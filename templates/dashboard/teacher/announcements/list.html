@@ -1,0 +1,73 @@
+{% extends "base/base.html" %}
+
+{% block title %}Course Announcements — Instructor Console — {{ PLATFORM_NAME }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+  {% include "base/_portal_nav.html" with active_nav="teacher_announcements" %}
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+      {% for message in messages %}
+      <div class="rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm flex items-center justify-between">
+        <span>{{ message }}</span>
+        <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-white ml-2 text-xs">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div>
+        <div class="flex items-center gap-2 text-xs text-indigo-400 font-semibold mb-1">
+          <a href="{% url 'teacher:dashboard' %}" class="hover:underline">Instructor Console</a>
+          <span>/</span>
+          <span class="text-gray-400">Announcements</span>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white">Course Announcements</h1>
+        <p class="text-sm text-gray-400 mt-1">Post updates, assignment alerts, or lecture reminders to your enrolled students.</p>
+      </div>
+
+      <a href="{% url 'teacher:announcement_create' %}"
+         class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 transition-all self-start sm:self-auto">
+        + Post Announcement
+      </a>
+    </div>
+
+    <!-- Announcements List -->
+    <div class="space-y-4">
+      {% for a in announcements %}
+      <div class="rounded-2xl border border-gray-800 bg-gray-900/60 p-5 hover:border-gray-700 transition-all">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1.5">
+              {% if a.course %}
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                {{ a.course.title }}
+              </span>
+              {% else %}
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                Platform-Wide
+              </span>
+              {% endif %}
+              <span class="text-xs text-gray-400">{{ a.created_at|date:"M j, Y · H:i" }}</span>
+            </div>
+            <h3 class="text-lg font-bold text-white">{{ a.title }}</h3>
+            <p class="text-xs text-gray-300 mt-1 line-clamp-3 leading-relaxed">{{ a.content }}</p>
+          </div>
+          <a href="{% url 'notifications:announcement_detail' a.id %}" target="_blank"
+             class="text-xs text-indigo-400 hover:underline font-semibold flex-shrink-0">
+            View as student →
+          </a>
+        </div>
+      </div>
+      {% empty %}
+      <div class="rounded-2xl border border-gray-800 bg-gray-900/40 p-12 text-center text-gray-400 text-xs">
+        No announcements posted yet. Click <strong>+ Post Announcement</strong> to broadcast a message to your students.
+      </div>
+      {% endfor %}
+    </div>
+  </main>
+</div>
+{% endblock %}

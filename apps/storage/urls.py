@@ -7,4 +7,5 @@ app_name = "storage"
 
 urlpatterns = [
     path("", views.private_media_view, name="private_media"),
+    path("gdrive-media/", views.gdrive_media_view, name="gdrive_media"),
 ]

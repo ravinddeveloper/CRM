@@ -1,0 +1,119 @@
+{% extends "base/base.html" %}
+
+{% block title %}{{ announcement.title }} — Announcements — {{ PLATFORM_NAME }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-20">
+  {% include "base/_portal_nav.html" with active_nav="announcements" %}
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-xs text-gray-400 mb-6">
+      <a href="{% url 'marketplace:course_list' %}" class="hover:text-white transition-colors">Home</a>
+      <span>/</span>
+      <a href="{% url 'notifications:announcement_list' %}" class="hover:text-white transition-colors">Announcements</a>
+      <span>/</span>
+      <span class="text-gray-200 truncate">{{ announcement.title|truncatechars:40 }}</span>
+    </div>
+
+    <!-- Announcement Card -->
+    <article class="rounded-3xl border border-gray-800 bg-gray-900/70 p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
+      <!-- Priority and Course Badges -->
+      <div class="flex flex-wrap items-center gap-2.5 pb-6 border-b border-gray-800">
+        {% if announcement.is_pinned %}
+        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          📌 Pinned Notice
+        </span>
+        {% endif %}
+
+        {% if announcement.priority == 'urgent' %}
+        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+          🚨 Urgent Priority
+        </span>
+        {% elif announcement.priority == 'important' %}
+        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          ⭐ Important Notice
+        </span>
+        {% else %}
+        <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-gray-800 text-gray-400 border border-gray-700">
+          Standard Notice
+        </span>
+        {% endif %}
+
+        {% if announcement.course %}
+        <a href="{% url 'marketplace:course_detail' announcement.course.slug %}"
+           class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 border border-indigo-500/20 transition-colors">
+          📚 Course: {{ announcement.course.title }}
+        </a>
+        {% else %}
+        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-800 text-gray-300 border border-gray-700">
+          🌐 Platform-Wide Announcement
+        </span>
+        {% endif %}
+      </div>
+
+      <!-- Title -->
+      <h1 class="mt-6 text-2xl sm:text-4xl font-extrabold text-white leading-tight">
+        {{ announcement.title }}
+      </h1>
+
+      <!-- Author and Meta -->
+      <div class="mt-6 flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-gray-950/60 border border-gray-800/80">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center font-bold text-white text-sm shadow-md">
+            {{ announcement.author.first_name|default:announcement.author.email|first|upper }}
+          </div>
+          <div>
+            <p class="font-bold text-white text-sm">{{ announcement.author.full_name|default:announcement.author.email }}</p>
+            <p class="text-xs text-gray-400">{{ announcement.author.get_role_display|default:announcement.author.role|capfirst }}</p>
+          </div>
+        </div>
+
+        <div class="text-right text-xs text-gray-400">
+          <span>Published on</span>
+          <p class="font-semibold text-gray-200 mt-0.5">{{ announcement.created_at|date:"F j, Y · H:i" }}</p>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="mt-8 text-gray-200 text-base sm:text-lg leading-relaxed space-y-4 whitespace-pre-line font-sans border-t border-gray-800/60 pt-8">
+        {{ announcement.content }}
+      </div>
+
+      <!-- Action Footer -->
+      <div class="mt-10 pt-6 border-t border-gray-800 flex flex-wrap items-center justify-between gap-4">
+        <a href="{% url 'notifications:announcement_list' %}"
+           class="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors">
+          <span>← Back to all announcements</span>
+        </a>
+
+        {% if request.user.is_authenticated and request.user.is_admin %}
+        <div class="flex items-center gap-3">
+          <a href="{% url 'admin_panel:announcement_edit' announcement.id %}"
+             class="px-3.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-xs font-bold text-gray-200 rounded-xl border border-gray-700 transition-colors">
+            Edit Notice
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </article>
+
+    <!-- Other Recent Notices -->
+    {% if related_announcements %}
+    <section class="mt-12">
+      <h2 class="text-lg font-bold text-white mb-4">Other Recent Notices</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {% for rel in related_announcements %}
+        <a href="{% url 'notifications:announcement_detail' rel.id %}"
+           class="rounded-2xl border border-gray-800 bg-gray-900/40 p-4 hover:border-gray-700 hover:bg-gray-900 transition-all block group">
+          <span class="text-[10px] text-gray-500">{{ rel.created_at|date:"M j, Y" }}</span>
+          <h3 class="font-bold text-sm text-white group-hover:text-indigo-400 transition-colors mt-1 line-clamp-1">{{ rel.title }}</h3>
+          <p class="text-xs text-gray-400 line-clamp-2 mt-1.5">{{ rel.content }}</p>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}

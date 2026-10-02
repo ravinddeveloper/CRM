@@ -31,23 +31,55 @@
     </div>
 
     <!-- Filter form -->
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-6 flex flex-wrap gap-4 items-center justify-between shadow-xl">
-      <form method="get" class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-        <input type="text" name="q" placeholder="Search by name or email..." value="{{ request.GET.q }}"
-               class="px-4 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500">
-        <select name="role" class="px-3 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-gray-300 focus:outline-none focus:border-purple-500">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-6 flex flex-col xl:flex-row items-center justify-between gap-4 shadow-xl">
+      <form method="get" class="flex flex-wrap md:flex-nowrap items-center gap-2.5 w-full xl:w-auto">
+        <div class="relative flex-1 min-w-[200px]">
+          <input type="text" name="q" placeholder="Search by name or email..." value="{{ search_query }}"
+                 class="w-full pl-9 pr-4 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500">
+          <svg class="w-4 h-4 text-gray-500 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+
+        <select name="role" onchange="this.form.submit()" class="px-3 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-gray-300 focus:outline-none focus:border-purple-500">
           <option value="">All Roles</option>
-          <option value="student" {% if request.GET.role == 'student' %}selected{% endif %}>Student</option>
-          <option value="teacher" {% if request.GET.role == 'teacher' %}selected{% endif %}>Teacher</option>
-          <option value="admin" {% if request.GET.role == 'admin' %}selected{% endif %}>Admin</option>
+          <option value="student" {% if selected_role == 'student' %}selected{% endif %}>Student</option>
+          <option value="teacher" {% if selected_role == 'teacher' %}selected{% endif %}>Teacher</option>
+          <option value="admin" {% if selected_role == 'admin' %}selected{% endif %}>Admin</option>
         </select>
-        <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-colors">
-          Search Users
+
+        <select name="status" onchange="this.form.submit()" class="px-3 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-gray-300 focus:outline-none focus:border-purple-500">
+          <option value="">All Statuses</option>
+          <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
+          <option value="suspended" {% if selected_status == 'suspended' %}selected{% endif %}>Suspended</option>
+          <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+
+        <select name="sort" onchange="this.form.submit()" class="px-3 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-gray-300 focus:outline-none focus:border-purple-500">
+          <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Sort: Newest</option>
+          <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Sort: Oldest</option>
+          <option value="name" {% if sort == 'name' %}selected{% endif %}>Sort: Name A-Z</option>
+          <option value="email" {% if sort == 'email' %}selected{% endif %}>Sort: Email A-Z</option>
+          <option value="enrollments" {% if sort == 'enrollments' %}selected{% endif %}>Most Enrollments</option>
+          <option value="orders" {% if sort == 'orders' %}selected{% endif %}>Most Orders</option>
+        </select>
+
+        <button type="submit" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-colors">
+          Filter
         </button>
+
+        <!-- Download CSV Button -->
+        <a href="?{% if selected_role %}role={{ selected_role }}&{% endif %}{% if selected_status %}status={{ selected_status }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}export=csv"
+           class="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 rounded-xl text-xs font-bold transition-colors whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>Download CSV</span>
+        </a>
       </form>
 
-      <div class="text-xs text-gray-400">
-        <span>{{ total_users }} Total Users</span> •
+      <div class="text-xs text-gray-400 whitespace-nowrap">
+        <span>{{ total_users }} Total</span> •
         <span class="text-brand-400">{{ total_students }} Students</span> •
         <span class="text-purple-400">{{ total_teachers }} Teachers</span>
       </div>

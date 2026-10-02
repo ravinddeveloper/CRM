@@ -260,7 +260,8 @@ def format_seconds_to_hm(seconds):
 
 def get_shift_statistics(shifts_queryset=None, employee=None):
     """
-    Calculate total work hours and today's total work hours across staff shifts.
+    Calculate total work hours and today's total work hours across staff shifts,
+    with per-individual breakdown and login detail metrics.
 
     Args:
         shifts_queryset: Optional queryset to calculate from (defaults to StaffShift.objects.all()).
@@ -277,6 +278,7 @@ def get_shift_statistics(shifts_queryset=None, employee=None):
             - open_shifts_count: number of currently active/open shifts
             - total_shifts_count: total shifts counted
             - today_shifts_count: total shifts recorded today
+            - individual_stats: list of dicts for each employee with individual hours and login details
     """
     qs = shifts_queryset if shifts_queryset is not None else StaffShift.objects.select_related("employee").all()
     if employee is not None:
@@ -291,19 +293,116 @@ def get_shift_statistics(shifts_queryset=None, employee=None):
     today_shifts_count = 0
     shifts_list = list(qs)
 
+    # Group shifts by individual employee for per-person breakdown
+    employee_shifts_map = {}
+
     for shift in shifts_list:
         dur = shift.duration_seconds
         total_seconds += dur
         if shift.is_open:
             open_shifts_count += 1
 
-        # Check if the shift started today or finished today
+        # Check if the shift started today or finished today (or is open right now)
         shift_in_date = timezone.localdate(shift.checked_in_at)
-        shift_out_date = timezone.localdate(shift.checked_out_at) if shift.checked_out_at else shift_in_date
+        shift_out_date = timezone.localdate(shift.checked_out_at) if shift.checked_out_at else timezone.localdate(now)
 
         if shift_in_date == today_date or shift_out_date == today_date:
             today_seconds += dur
             today_shifts_count += 1
+
+        # Accumulate for individual employee
+        emp = shift.employee
+        if emp.id not in employee_shifts_map:
+            employee_shifts_map[emp.id] = {
+                "employee": emp,
+                "shifts": [],
+            }
+        employee_shifts_map[emp.id]["shifts"].append(shift)
+
+    # If calculating platform-wide, also include staff/instructors without shifts yet
+    if employee is None:
+        from apps.accounts.models import UserRole
+        User = get_user_model()
+        staff_users = User.objects.filter(
+            Q(role__in=[UserRole.EMPLOYEE, UserRole.TEACHER, UserRole.ADMIN]) | Q(staff_shifts__isnull=False)
+        ).distinct()
+        for u in staff_users:
+            if u.id not in employee_shifts_map:
+                employee_shifts_map[u.id] = {
+                    "employee": u,
+                    "shifts": [],
+                }
+
+    individual_stats = []
+    for emp_id, data in employee_shifts_map.items():
+        emp = data["employee"]
+        emp_shifts = data["shifts"]
+        emp_total_sec = 0
+        emp_today_sec = 0
+        emp_open_shift = None
+        emp_today_count = 0
+        latest_shift = None
+
+        for s in emp_shifts:
+            s_dur = s.duration_seconds
+            emp_total_sec += s_dur
+            if s.is_open and emp_open_shift is None:
+                emp_open_shift = s
+            s_in = timezone.localdate(s.checked_in_at)
+            s_out = timezone.localdate(s.checked_out_at) if s.checked_out_at else timezone.localdate(now)
+            if s_in == today_date or s_out == today_date:
+                emp_today_sec += s_dur
+                emp_today_count += 1
+            if latest_shift is None:
+                latest_shift = s
+
+        name = getattr(emp, "full_name", "") or emp.get_full_name() if hasattr(emp, "get_full_name") else ""
+        if not name:
+            name = emp.email
+
+        last_ip = (
+            latest_shift.check_in_ip
+            if latest_shift and latest_shift.check_in_ip
+            else None
+        )
+
+        role_display = (
+            emp.get_role_display()
+            if hasattr(emp, "get_role_display")
+            else str(getattr(emp, "role", "Staff")).capitalize()
+        )
+
+        individual_stats.append({
+            "employee": emp,
+            "user_id": str(emp.id),
+            "name": name,
+            "email": emp.email,
+            "role": getattr(emp, "role", "employee"),
+            "role_display": role_display,
+            "last_login": emp.last_login,
+            "today_seconds": emp_today_sec,
+            "today_hours": round(emp_today_sec / 3600.0, 2),
+            "formatted_today_hours": format_seconds_to_hm(emp_today_sec),
+            "total_seconds": emp_total_sec,
+            "total_hours": round(emp_total_sec / 3600.0, 2),
+            "formatted_total_hours": format_seconds_to_hm(emp_total_sec),
+            "is_on_shift": emp_open_shift is not None,
+            "open_shift": emp_open_shift,
+            "today_shifts_count": emp_today_count,
+            "total_shifts_count": len(emp_shifts),
+            "latest_shift": latest_shift,
+            "last_ip": last_ip,
+        })
+
+    # Sort: active on-shift first, then by today's hours desc, then total hours desc, then name
+    individual_stats.sort(
+        key=lambda item: (
+            not item["is_on_shift"],
+            -item["today_seconds"],
+            -item["total_seconds"],
+            item["name"].lower(),
+        )
+    )
 
     return {
         "total_seconds": total_seconds,
@@ -315,5 +414,6 @@ def get_shift_statistics(shifts_queryset=None, employee=None):
         "open_shifts_count": open_shifts_count,
         "total_shifts_count": len(shifts_list),
         "today_shifts_count": today_shifts_count,
+        "individual_stats": individual_stats,
     }
 

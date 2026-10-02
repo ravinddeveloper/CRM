@@ -302,7 +302,7 @@ CORS_ALLOW_CREDENTIALS = True
 # ---------------------------------------------------------------------------
 # Object Storage
 # ---------------------------------------------------------------------------
-STORAGE_BACKEND = config("STORAGE_BACKEND", default="local")  # local | minio | s3 | azure
+STORAGE_BACKEND = config("STORAGE_BACKEND", default="local")  # local | minio | s3 | azure | gdrive
 S3_ENDPOINT_URL = config("S3_ENDPOINT_URL", default="")
 S3_ACCESS_KEY = config("S3_ACCESS_KEY", default="")
 S3_SECRET_KEY = config("S3_SECRET_KEY", default="")
@@ -315,6 +315,15 @@ AZURE_CONTAINER = config("AZURE_CONTAINER", default="lms-content")
 AZURE_CONNECTION_STRING = config("AZURE_CONNECTION_STRING", default="")
 AZURE_CUSTOM_DOMAIN = config("AZURE_CUSTOM_DOMAIN", default="")
 AZURE_SIGNED_URL_EXPIRY = config("AZURE_SIGNED_URL_EXPIRY", default=3600, cast=int)
+
+# Google Drive storage (STORAGE_BACKEND=gdrive)
+# Auth: GDRIVE_SERVICE_ACCOUNT_JSON (file path) OR GDRIVE_SERVICE_ACCOUNT_INFO (JSON string)
+# falls back to Application Default Credentials when neither is set.
+GDRIVE_SERVICE_ACCOUNT_JSON = config("GDRIVE_SERVICE_ACCOUNT_JSON", default="")
+GDRIVE_SERVICE_ACCOUNT_INFO = config("GDRIVE_SERVICE_ACCOUNT_INFO", default="")
+GDRIVE_ROOT_FOLDER_ID = config("GDRIVE_ROOT_FOLDER_ID", default="")
+GDRIVE_SHARED_DRIVE_ID = config("GDRIVE_SHARED_DRIVE_ID", default="")
+GDRIVE_SIGNED_URL_EXPIRY = config("GDRIVE_SIGNED_URL_EXPIRY", default=3600, cast=int)
 
 # ---------------------------------------------------------------------------
 # Payment

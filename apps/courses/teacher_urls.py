@@ -2,6 +2,7 @@
 from django.urls import path
 
 from apps.courses import teacher_views as views
+from apps.notifications import views as notifications_views
 
 app_name = "teacher"
 
@@ -31,4 +32,6 @@ urlpatterns = [
     path("materials/<str:resource_type>/<uuid:resource_id>/delete/", views.material_delete_view, name="material_delete"),
     path("courses/<uuid:course_id>/students/", views.course_students_view, name="course_students"),
     path("analytics/", views.analytics_view, name="analytics"),
+    path("announcements/", notifications_views.teacher_announcement_list, name="announcement_list"),
+    path("announcements/create/", notifications_views.teacher_announcement_create, name="announcement_create"),
 ]

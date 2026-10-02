@@ -1,0 +1,195 @@
+{% extends "base/base.html" %}
+
+{% block title %}Announcements — Admin Console — {{ PLATFORM_NAME }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+  {% include "dashboard/admin/_nav.html" %}
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+      {% for message in messages %}
+      <div class="rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm flex items-center justify-between">
+        <span>{{ message }}</span>
+        <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-white ml-2 text-xs">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Top Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-3xl font-extrabold text-white">Announcements</h1>
+        <p class="text-sm text-gray-400 mt-1">Broadcast official news, course updates, and alerts to students and instructors.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="{% url 'notifications:announcement_list' %}" target="_blank"
+           class="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-gray-300 rounded-xl text-xs font-semibold border border-gray-800 transition-colors">
+          View Student Board ↗
+        </a>
+        <a href="{% url 'admin_panel:announcement_create' %}"
+           class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 transition-all">
+          + New Announcement
+        </a>
+      </div>
+    </div>
+
+    <!-- Stats Strip -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <div class="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Posted</p>
+        <p class="mt-2 text-2xl font-extrabold text-white">{{ total_count }}</p>
+      </div>
+      <div class="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Platform-Wide</p>
+        <p class="mt-2 text-2xl font-extrabold text-indigo-400">{{ platform_count }}</p>
+      </div>
+      <div class="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Course Specific</p>
+        <p class="mt-2 text-2xl font-extrabold text-purple-400">{{ course_count }}</p>
+      </div>
+      <div class="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Pinned Notices</p>
+        <p class="mt-2 text-2xl font-extrabold text-amber-400">{{ pinned_count }}</p>
+      </div>
+    </div>
+
+    <!-- Filters & Search Toolbar -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-8 flex flex-col xl:flex-row items-center justify-between gap-4 shadow-xl">
+      <form method="get" class="w-full flex flex-wrap md:flex-nowrap items-center gap-2.5">
+        <!-- Scope Filter -->
+        <select name="scope" onchange="this.form.submit()" class="px-3 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-gray-300 focus:outline-none focus:border-purple-500">
+          <option value="">All Audiences</option>
+          <option value="platform" {% if selected_scope == 'platform' %}selected{% endif %}>Platform-Wide Only</option>
+          <option value="course" {% if selected_scope == 'course' %}selected{% endif %}>Course Specific Only</option>
+        </select>
+
+        <!-- Priority Filter -->
+        <select name="priority" onchange="this.form.submit()" class="px-3 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-gray-300 focus:outline-none focus:border-purple-500">
+          <option value="">All Priorities</option>
+          {% for val, label in priorities %}
+            <option value="{{ val }}" {% if selected_priority == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+
+        <!-- Sort Select -->
+        <select name="sort" onchange="this.form.submit()" class="px-3 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-gray-300 focus:outline-none focus:border-purple-500">
+          <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Sort: Newest</option>
+          <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Sort: Oldest</option>
+          <option value="title" {% if sort == 'title' %}selected{% endif %}>Sort: Title A-Z</option>
+          <option value="views" {% if sort == 'views' %}selected{% endif %}>Most Views</option>
+        </select>
+
+        <div class="relative flex-1 min-w-[200px]">
+          <input type="text" name="q" value="{{ search_query }}"
+                 placeholder="Search announcement title, content or author..."
+                 class="w-full pl-9 pr-4 py-2 bg-gray-950 border border-gray-800 rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-500">
+          <svg class="w-4 h-4 text-gray-500 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <button type="submit" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-colors">
+          Filter
+        </button>
+
+        <!-- Download CSV Button -->
+        <a href="?{% if selected_scope %}scope={{ selected_scope }}&{% endif %}{% if selected_priority %}priority={{ selected_priority }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}{% if sort %}sort={{ sort }}&{% endif %}export=csv"
+           class="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 rounded-xl text-xs font-bold transition-colors whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>Download CSV</span>
+        </a>
+      </form>
+    </div>
+
+    <!-- Table of Announcements -->
+    <div class="overflow-x-auto rounded-2xl border border-gray-800 bg-gray-900/40">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-gray-900 text-xs uppercase tracking-wide text-gray-400">
+          <tr>
+            <th class="px-5 py-3.5">Announcement</th>
+            <th class="px-5 py-3.5">Target Audience</th>
+            <th class="px-5 py-3.5">Priority</th>
+            <th class="px-5 py-3.5">Author</th>
+            <th class="px-5 py-3.5">Date</th>
+            <th class="px-5 py-3.5 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800 bg-gray-950">
+          {% for a in announcements %}
+          <tr class="hover:bg-gray-900/40 transition-colors">
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-2">
+                {% if a.is_pinned %}
+                <span title="Pinned" class="text-amber-400 text-xs">📌</span>
+                {% endif %}
+                <div>
+                  <a href="{% url 'admin_panel:announcement_edit' a.id %}" class="font-bold text-white hover:text-indigo-400 transition-colors">
+                    {{ a.title }}
+                  </a>
+                  <p class="text-xs text-gray-400 line-clamp-1 max-w-md mt-0.5">{{ a.content }}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-4">
+              {% if a.course %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                Course: {{ a.course.title|truncatechars:25 }}
+              </span>
+              {% else %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                🌐 Platform-wide
+              </span>
+              {% endif %}
+            </td>
+            <td class="px-5 py-4">
+              {% if a.priority == 'urgent' %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                🚨 Urgent
+              </span>
+              {% elif a.priority == 'important' %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                ⭐ Important
+              </span>
+              {% else %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-800 text-gray-300">
+                Standard
+              </span>
+              {% endif %}
+            </td>
+            <td class="px-5 py-4 text-xs text-gray-300">
+              {{ a.author.full_name|default:a.author.email }}
+            </td>
+            <td class="px-5 py-4 text-xs text-gray-400 whitespace-nowrap">
+              {{ a.created_at|date:"M j, Y · H:i" }}
+            </td>
+            <td class="px-5 py-4 text-right">
+              <div class="flex items-center justify-end gap-2">
+                <a href="{% url 'notifications:announcement_detail' a.id %}" target="_blank"
+                   class="text-xs text-gray-400 hover:text-white px-2 py-1">View</a>
+                <a href="{% url 'admin_panel:announcement_edit' a.id %}"
+                   class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 px-2 py-1">Edit</a>
+                <form method="post" action="{% url 'admin_panel:announcement_delete' a.id %}"
+                      onsubmit="return confirm('Delete this announcement?');" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="text-xs font-semibold text-rose-400 hover:text-rose-300 px-2 py-1">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="px-5 py-12 text-center text-gray-400 text-sm">
+              No announcements published yet. Click <strong>+ New Announcement</strong> to publish the first notice.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+{% endblock %}

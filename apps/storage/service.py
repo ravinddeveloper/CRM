@@ -28,11 +28,14 @@ def get_storage_service() -> BaseStorageService:
     elif backend == "azure":
         from .azure import AzureBlobStorageService
         _service_cache = AzureBlobStorageService()
+    elif backend == "gdrive":
+        from .gdrive import GoogleDriveStorageService
+        _service_cache = GoogleDriveStorageService()
     elif backend == "local":
         from .local import LocalStorageService
         _service_cache = LocalStorageService()
     else:
-        raise ValueError(f"Unknown STORAGE_BACKEND: '{backend}'. Choices: local, minio, s3, azure")
+        raise ValueError(f"Unknown STORAGE_BACKEND: '{backend}'. Choices: local, minio, s3, azure, gdrive")
 
     return _service_cache
 

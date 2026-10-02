@@ -115,11 +115,62 @@ def course_list_view(request):
     if status in CourseStatus.values:
         qs = qs.filter(status=status)
 
+    # Category filter
+    category_slug = request.GET.get("category", "").strip()
+    if category_slug:
+        qs = qs.filter(category__slug=category_slug)
+
+    # Sort option
+    sort = request.GET.get("sort", "newest").strip()
+    if sort == "oldest":
+        qs = qs.order_by("created_at")
+    elif sort == "title":
+        qs = qs.order_by("title")
+    elif sort == "price_high":
+        qs = qs.order_by("-price")
+    elif sort == "price_low":
+        qs = qs.order_by("price")
+    elif sort == "learners":
+        qs = qs.order_by("-student_count")
+    else:
+        qs = qs.order_by("-created_at")
+
+    # CSV Export
+    if request.GET.get("export") == "csv":
+        from apps.common.exports import export_as_csv
+        headers = [
+            "Title", "Instructor Name", "Instructor Email", "Category",
+            "Difficulty", "Price", "Currency", "Modules Count",
+            "Active Learners", "Status", "Created At"
+        ]
+        rows = [
+            [
+                c.title,
+                c.teacher.full_name if c.teacher else "",
+                c.teacher.email if c.teacher else "",
+                c.category.name if c.category else "Uncategorized",
+                c.difficulty,
+                str(c.price),
+                c.currency,
+                c.section_count,
+                c.student_count,
+                c.get_status_display(),
+                c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "",
+            ]
+            for c in qs
+        ]
+        return export_as_csv("courses_export.csv", headers, rows)
+
+    categories = Category.objects.filter(is_active=True).order_by("name")
+
     context = {
         "active_tab": "courses",
         "courses": qs,
         "search_query": search,
         "selected_status": status,
+        "selected_category": category_slug,
+        "categories": categories,
+        "sort": sort,
         "total_count": Course.objects.count(),
         "published_count": Course.objects.filter(status=CourseStatus.PUBLISHED).count(),
         "draft_count": Course.objects.filter(status=CourseStatus.DRAFT).count(),
@@ -617,8 +668,8 @@ def study_material_delete_view(request, material_type, material_id):
 
 @admin_required
 def transaction_list_view(request):
-    """List all orders / transactions with search, status filters, and stats."""
-    qs = Order.objects.select_related("user", "invoice").prefetch_related("items").order_by("-created_at")
+    """List all orders / transactions with search, status filters, sorting, and CSV export."""
+    qs = Order.objects.select_related("user", "invoice").prefetch_related("items")
 
     search = request.GET.get("q", "").strip()
     if search:
@@ -638,6 +689,40 @@ def transaction_list_view(request):
     if provider:
         qs = qs.filter(payment_provider__iexact=provider)
 
+    # Sort
+    sort = request.GET.get("sort", "newest").strip()
+    if sort == "oldest":
+        qs = qs.order_by("created_at")
+    elif sort == "amount_high":
+        qs = qs.order_by("-total")
+    elif sort == "amount_low":
+        qs = qs.order_by("total")
+    else:
+        qs = qs.order_by("-created_at")
+
+    # CSV Export
+    if request.GET.get("export") == "csv":
+        from apps.common.exports import export_as_csv
+        headers = [
+            "Order Number", "Customer Name", "Customer Email", "Total Amount",
+            "Currency", "Status", "Payment Provider", "Transaction ID", "Created At"
+        ]
+        rows = [
+            [
+                o.order_number,
+                o.billing_name or (o.user.full_name if o.user else ""),
+                o.billing_email or (o.user.email if o.user else ""),
+                str(o.total),
+                o.currency,
+                o.get_status_display(),
+                o.payment_provider or "N/A",
+                o.payment_transaction_id or "N/A",
+                o.created_at.strftime("%Y-%m-%d %H:%M") if o.created_at else "",
+            ]
+            for o in qs
+        ]
+        return export_as_csv("transactions_export.csv", headers, rows)
+
     # Financial Summary
     total_rev = Order.objects.filter(status=OrderStatus.COMPLETED).aggregate(s=Sum("total"))["s"] or Decimal("0.00")
     completed_count = Order.objects.filter(status=OrderStatus.COMPLETED).count()
@@ -649,11 +734,13 @@ def transaction_list_view(request):
         "search_query": search,
         "selected_status": status,
         "selected_provider": provider,
+        "sort": sort,
         "total_revenue": total_rev,
         "completed_count": completed_count,
         "refunded_count": refunded_count,
     }
     return render(request, "dashboard/admin/transactions/list.html", context)
+
 
 
 @admin_required
@@ -731,16 +818,67 @@ def transaction_refund_view(request, order_id):
 
 @admin_required
 def coupon_list_view(request):
-    """List and manage discount coupons."""
-    coupons = Coupon.objects.select_related("created_by").order_by("-created_at")
+    """List and manage discount coupons with filtering, search, sorting, and CSV export."""
+    coupons = Coupon.objects.select_related("created_by")
+
+    q = request.GET.get("q", "").strip()
+    if q:
+        coupons = coupons.filter(Q(code__icontains=q) | Q(created_by__email__icontains=q))
+
+    status = request.GET.get("status", "").strip()
+    if status == "active":
+        coupons = coupons.filter(is_active=True)
+    elif status == "inactive":
+        coupons = coupons.filter(is_active=False)
+
+    sort = request.GET.get("sort", "newest").strip()
+    if sort == "oldest":
+        coupons = coupons.order_by("created_at")
+    elif sort == "code":
+        coupons = coupons.order_by("code")
+    elif sort == "discount_high":
+        coupons = coupons.order_by("-discount_value")
+    elif sort == "uses_high":
+        coupons = coupons.order_by("-times_used")
+    else:
+        coupons = coupons.order_by("-created_at")
+
+    # CSV Export
+    if request.GET.get("export") == "csv":
+        from apps.common.exports import export_as_csv
+        headers = [
+            "Code", "Discount Type", "Discount Value", "Times Used", "Max Uses",
+            "Min Order Amount", "Max Discount", "Valid From", "Valid Until", "Status", "Created By"
+        ]
+        rows = [
+            [
+                c.code,
+                c.get_discount_type_display(),
+                str(c.discount_value),
+                c.times_used,
+                c.max_uses if c.max_uses is not None else "Unlimited",
+                str(c.minimum_order_amount),
+                str(c.max_discount_amount) if c.max_discount_amount is not None else "N/A",
+                c.valid_from.strftime("%Y-%m-%d") if c.valid_from else "",
+                c.valid_until.strftime("%Y-%m-%d") if c.valid_until else "Never",
+                "Active" if c.is_active else "Inactive",
+                c.created_by.email if c.created_by else "System",
+            ]
+            for c in coupons
+        ]
+        return export_as_csv("coupons_export.csv", headers, rows)
 
     context = {
         "active_tab": "coupons",
         "coupons": coupons,
-        "total_count": coupons.count(),
-        "active_count": coupons.filter(is_active=True).count(),
+        "search_query": q,
+        "selected_status": status,
+        "sort": sort,
+        "total_count": Coupon.objects.count(),
+        "active_count": Coupon.objects.filter(is_active=True).count(),
     }
     return render(request, "dashboard/admin/coupons/list.html", context)
+
 
 
 @admin_required
@@ -840,13 +978,15 @@ def coupon_delete_view(request, coupon_id):
 
 @admin_required
 def enrollment_list_view(request):
-    """List all student enrollments across all courses."""
-    qs = Enrollment.objects.select_related("user", "course", "order").order_by("-created_at")
+    """List all student enrollments across all courses with filters, sorting, and CSV export."""
+    qs = Enrollment.objects.select_related("user", "course", "order")
 
     search = request.GET.get("q", "").strip()
     if search:
         qs = qs.filter(
             Q(user__email__icontains=search)
+            | Q(user__first_name__icontains=search)
+            | Q(user__last_name__icontains=search)
             | Q(course__title__icontains=search)
             | Q(order__order_number__icontains=search)
         )
@@ -855,15 +995,56 @@ def enrollment_list_view(request):
     if status in EnrollmentStatus.values:
         qs = qs.filter(status=status)
 
+    course_id = request.GET.get("course", "").strip()
+    if course_id:
+        qs = qs.filter(course_id=course_id)
+
+    sort = request.GET.get("sort", "newest").strip()
+    if sort == "oldest":
+        qs = qs.order_by("created_at")
+    elif sort == "student":
+        qs = qs.order_by("user__email")
+    elif sort == "course":
+        qs = qs.order_by("course__title")
+    else:
+        qs = qs.order_by("-created_at")
+
+    # CSV Export
+    if request.GET.get("export") == "csv":
+        from apps.common.exports import export_as_csv
+        headers = [
+            "Student Name", "Student Email", "Course Title", "Access Type",
+            "Status", "Enrolled At", "Order Number"
+        ]
+        rows = [
+            [
+                e.user.full_name if e.user else "",
+                e.user.email if e.user else "",
+                e.course.title if e.course else "",
+                e.get_access_type_display() if hasattr(e, "get_access_type_display") else str(e.access_type),
+                e.get_status_display(),
+                e.created_at.strftime("%Y-%m-%d %H:%M") if e.created_at else "",
+                e.order.order_number if e.order else "Manual Enrollment",
+            ]
+            for e in qs
+        ]
+        return export_as_csv("enrollments_export.csv", headers, rows)
+
+    all_courses = Course.objects.all().order_by("title").only("id", "title")
+
     context = {
         "active_tab": "enrollments",
         "enrollments": qs,
         "search_query": search,
         "selected_status": status,
+        "selected_course": course_id,
+        "courses": all_courses,
+        "sort": sort,
         "total_count": Enrollment.objects.count(),
         "active_count": Enrollment.objects.filter(status=EnrollmentStatus.ACTIVE).count(),
     }
     return render(request, "dashboard/admin/enrollments/list.html", context)
+
 
 
 @admin_required
@@ -953,11 +1134,11 @@ def enrollment_toggle_view(request, enrollment_id):
 
 @admin_required
 def user_list_view(request):
-    """List all platform users with role filters and search."""
+    """List all platform users with role filters, search, sorting, and CSV export."""
     qs = User.objects.select_related("profile").annotate(
         enrollment_count=Count("enrollments"),
         order_count=Count("orders"),
-    ).order_by("-date_joined")
+    )
 
     role = request.GET.get("role")
     if role:
@@ -979,15 +1160,59 @@ def user_list_view(request):
     elif status == "inactive":
         qs = qs.filter(is_active=False)
 
+    sort = request.GET.get("sort", "newest").strip()
+    if sort == "oldest":
+        qs = qs.order_by("date_joined")
+    elif sort == "name":
+        qs = qs.order_by("first_name", "last_name")
+    elif sort == "email":
+        qs = qs.order_by("email")
+    elif sort == "role":
+        qs = qs.order_by("role")
+    elif sort == "enrollments":
+        qs = qs.order_by("-enrollment_count")
+    elif sort == "orders":
+        qs = qs.order_by("-order_count")
+    else:
+        qs = qs.order_by("-date_joined")
+
+    # CSV Export
+    if request.GET.get("export") == "csv":
+        from apps.common.exports import export_as_csv
+        headers = [
+            "Full Name", "Email", "Role", "Active", "Email Verified",
+            "Suspended", "Enrollments Count", "Orders Count", "Date Joined"
+        ]
+        rows = [
+            [
+                u.full_name,
+                u.email,
+                u.get_role_display() if hasattr(u, "get_role_display") else u.role,
+                "Yes" if u.is_active else "No",
+                "Yes" if u.email_verified else "No",
+                "Yes" if u.is_suspended else "No",
+                u.enrollment_count,
+                u.order_count,
+                u.date_joined.strftime("%Y-%m-%d %H:%M") if u.date_joined else "",
+            ]
+            for u in qs
+        ]
+        return export_as_csv("users_export.csv", headers, rows)
+
     context = {
         "active_tab": "users",
         "users": qs,
+        "search_query": search or "",
+        "selected_role": role or "",
+        "selected_status": status or "",
+        "sort": sort,
         "roles": ["admin", "teacher", "student"],
         "total_users": User.objects.count(),
         "total_students": User.objects.filter(role="student").count(),
         "total_teachers": User.objects.filter(role="teacher").count(),
     }
     return render(request, "dashboard/admin/users.html", context)
+
 
 
 @admin_required
@@ -1109,14 +1334,54 @@ def activate_user_view(request, user_id):
 
 @admin_required
 def audit_log_view(request):
-    """View tamper-evident security and activity audit trail."""
+    """View tamper-evident security and activity audit trail with filter, sort, and CSV export."""
     action_filter = request.GET.get("action", "").strip()
-    logs = AuditLogService.list_recent(action=action_filter or None, limit=150)
+    q = request.GET.get("q", "").strip()
+    sort = request.GET.get("sort", "newest").strip()
+
+    limit = 1000 if request.GET.get("export") == "csv" else 200
+    logs = AuditLogService.list_recent(action=action_filter or None, limit=limit)
+
+    if q:
+        q_lower = q.lower()
+        logs = [
+            log for log in logs
+            if q_lower in (getattr(log, "actor_email", "") or (log.actor.email if getattr(log, "actor", None) else "")).lower()
+            or q_lower in (log.object_repr or "").lower()
+            or q_lower in (log.object_type or "").lower()
+            or q_lower in (log.ip_address or "").lower()
+        ]
+
+    if sort == "oldest":
+        logs = sorted(logs, key=lambda l: l.created_at)
+    else:
+        logs = sorted(logs, key=lambda l: l.created_at, reverse=True)
+
+    if request.GET.get("export") == "csv":
+        from apps.common.exports import export_as_csv
+        headers = [
+            "Timestamp", "Actor Email", "Action", "Object Type", "Object ID", "Object Name", "IP Address"
+        ]
+        rows = [
+            [
+                log.created_at.strftime("%Y-%m-%d %H:%M:%S") if log.created_at else "",
+                log.actor.email if getattr(log, "actor", None) else (getattr(log, "actor_email", "") or "System"),
+                log.get_action_display() if hasattr(log, "get_action_display") else str(log.action),
+                log.object_type or "",
+                str(log.object_id) if log.object_id else "",
+                log.object_repr or "",
+                log.ip_address or "",
+            ]
+            for log in logs
+        ]
+        return export_as_csv("audit_logs_export.csv", headers, rows)
 
     context = {
         "active_tab": "audit_logs",
         "logs": logs,
         "action_filter": action_filter,
+        "search_query": q,
+        "sort": sort,
         "actions": AuditAction.choices,
     }
     return render(request, "dashboard/admin/audit_logs.html", context)
@@ -1161,13 +1426,13 @@ def student_report_view(request):
 
 @admin_required
 def category_list_view(request):
-    """Admin interface to list, search, and manage course categories."""
+    """Admin interface to list, search, sort, and manage course categories."""
     q = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "")
 
     categories = Category.objects.select_related("parent").annotate(
         course_count=Count("courses")
-    ).order_by("order", "name")
+    )
 
     if q:
         categories = categories.filter(
@@ -1179,6 +1444,37 @@ def category_list_view(request):
     elif status_filter == "inactive":
         categories = categories.filter(is_active=False)
 
+    sort = request.GET.get("sort", "order").strip()
+    if sort == "name":
+        categories = categories.order_by("name")
+    elif sort == "courses_high":
+        categories = categories.order_by("-course_count")
+    elif sort == "courses_low":
+        categories = categories.order_by("course_count")
+    elif sort == "newest":
+        categories = categories.order_by("-created_at")
+    else:
+        categories = categories.order_by("order", "name")
+
+    if request.GET.get("export") == "csv":
+        from apps.common.exports import export_as_csv
+        headers = [
+            "Category Name", "Slug", "Parent Category", "Display Order", "Courses Count", "Status", "Created At"
+        ]
+        rows = [
+            [
+                cat.name,
+                cat.slug,
+                cat.parent.name if cat.parent else "None (Root)",
+                cat.order,
+                cat.course_count,
+                "Active" if cat.is_active else "Inactive",
+                cat.created_at.strftime("%Y-%m-%d %H:%M") if hasattr(cat, "created_at") and cat.created_at else "",
+            ]
+            for cat in categories
+        ]
+        return export_as_csv("categories_export.csv", headers, rows)
+
     total_categories = Category.objects.count()
     active_categories = Category.objects.filter(is_active=True).count()
     root_categories = Category.objects.filter(parent__isnull=True).count()
@@ -1189,12 +1485,14 @@ def category_list_view(request):
         "categories": categories,
         "q": q,
         "status_filter": status_filter,
+        "sort": sort,
         "total_categories": total_categories,
         "active_categories": active_categories,
         "root_categories": root_categories,
         "total_courses_categorized": total_courses_categorized,
     }
     return render(request, "dashboard/admin/categories/list.html", context)
+
 
 
 @admin_required

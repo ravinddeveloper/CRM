@@ -1,0 +1,68 @@
+{% extends "base/base.html" %}
+
+{% block title %}Create Announcement — Instructor Console — {{ PLATFORM_NAME }}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-gray-950 text-gray-100 pb-16">
+  {% include "base/_portal_nav.html" with active_nav="teacher_announcements" %}
+
+  <main class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-center gap-2 text-xs text-indigo-400 font-semibold mb-4">
+      <a href="{% url 'teacher:announcement_list' %}" class="hover:underline">Announcements</a>
+      <span>/</span>
+      <span class="text-gray-400">New</span>
+    </div>
+
+    <div class="rounded-3xl border border-gray-800 bg-gray-900/70 p-6 sm:p-8 shadow-xl">
+      <h1 class="text-2xl font-extrabold text-white">Post Course Announcement</h1>
+      <p class="text-xs text-gray-400 mt-1">Broadcast an update, reading assignment, or reminder to your enrolled students.</p>
+
+      <form method="post" class="mt-6 space-y-5">
+        {% csrf_token %}
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
+            Target Course
+          </label>
+          {{ form.course }}
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
+            Headline / Title <span class="text-rose-400">*</span>
+          </label>
+          {{ form.title }}
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
+            Priority
+          </label>
+          {{ form.priority }}
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-300 mb-2">
+            Message Content <span class="text-rose-400">*</span>
+          </label>
+          {{ form.content }}
+        </div>
+
+        <div class="pt-2 flex items-center gap-3">
+          {{ form.is_pinned }}
+          <label for="{{ form.is_pinned.id_for_label }}" class="text-xs text-gray-300">
+            Pin to top of course notices
+          </label>
+        </div>
+
+        <div class="pt-4 flex items-center justify-between border-t border-gray-800">
+          <a href="{% url 'teacher:announcement_list' %}" class="text-xs text-gray-400 hover:text-white">Cancel</a>
+          <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20">
+            Publish Notice
+          </button>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+{% endblock %}

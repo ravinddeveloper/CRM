@@ -512,3 +512,222 @@ class TestStaffShiftWorkHoursCalculation(TestCase):
         self.assertContains(res, "Total Work Hours")
         self.assertContains(res, "Work hours")
         self.assertContains(res, "1h 45m")
+
+    def test_shift_statistics_individual_calculation(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from apps.scheduling.models import StaffShift
+        from apps.scheduling.services import get_shift_statistics
+        from tests.factories import make_teacher
+
+        emp1 = self.employee
+        emp2 = make_teacher(email="instructor2@example.com")
+        now = timezone.now()
+
+        # emp1: 2 hours today
+        StaffShift.objects.create(
+            employee=emp1,
+            checked_in_at=now - timedelta(hours=2),
+            checked_out_at=now,
+            check_in_ip="192.168.1.10",
+        )
+
+        # emp2: 3 hours today, 1 hour 3 days ago
+        StaffShift.objects.create(
+            employee=emp2,
+            checked_in_at=now - timedelta(hours=3),
+            checked_out_at=now,
+            check_in_ip="192.168.1.20",
+        )
+        StaffShift.objects.create(
+            employee=emp2,
+            checked_in_at=now - timedelta(days=3, hours=2),
+            checked_out_at=now - timedelta(days=3, hours=1),
+            check_in_ip="192.168.1.20",
+        )
+
+        # 1. Total platform stats
+        all_stats = get_shift_statistics()
+        self.assertEqual(all_stats["today_hours"], 5.0)
+        self.assertEqual(all_stats["total_hours"], 6.0)
+
+        # 2. Individual stats breakdown
+        indiv_stats = all_stats["individual_stats"]
+        emp1_stat = next(item for item in indiv_stats if item["user_id"] == str(emp1.id))
+        emp2_stat = next(item for item in indiv_stats if item["user_id"] == str(emp2.id))
+
+        self.assertEqual(emp1_stat["today_hours"], 2.0)
+        self.assertEqual(emp1_stat["total_hours"], 2.0)
+        self.assertEqual(emp1_stat["last_ip"], "192.168.1.10")
+
+        self.assertEqual(emp2_stat["today_hours"], 3.0)
+        self.assertEqual(emp2_stat["total_hours"], 4.0)
+        self.assertEqual(emp2_stat["last_ip"], "192.168.1.20")
+
+        # 3. Filter specifically by individual employee
+        emp1_filtered = get_shift_statistics(employee=emp1)
+        self.assertEqual(emp1_filtered["today_hours"], 2.0)
+        self.assertEqual(emp1_filtered["total_hours"], 2.0)
+
+        emp2_filtered = get_shift_statistics(employee=emp2)
+        self.assertEqual(emp2_filtered["today_hours"], 3.0)
+        self.assertEqual(emp2_filtered["total_hours"], 4.0)
+
+    def test_user_login_records_shift_and_logout_clocks_out(self):
+        from django.contrib.auth.signals import user_logged_in, user_logged_out
+        from django.test import RequestFactory
+        from apps.scheduling.models import StaffShift
+        from tests.factories import make_teacher
+
+        teacher = make_teacher(email="shift_tracker@example.com")
+        factory = RequestFactory()
+
+        # Simulate user login with IP
+        request = factory.post("/accounts/login/")
+        request.META["REMOTE_ADDR"] = "203.0.113.42"
+        user_logged_in.send(sender=teacher.__class__, request=request, user=teacher)
+
+        # Verify shift was automatically opened with login IP
+        shift = StaffShift.objects.filter(employee=teacher, checked_out_at__isnull=True).first()
+        self.assertIsNotNone(shift)
+        self.assertEqual(shift.check_in_ip, "203.0.113.42")
+        self.assertTrue(shift.is_open)
+
+        # Simulate user logout with IP
+        logout_request = factory.post("/accounts/logout/")
+        logout_request.META["REMOTE_ADDR"] = "203.0.113.43"
+        user_logged_out.send(sender=teacher.__class__, request=logout_request, user=teacher)
+
+        # Verify shift was clocked out
+        shift.refresh_from_db()
+        self.assertFalse(shift.is_open)
+        self.assertIsNotNone(shift.checked_out_at)
+        self.assertEqual(shift.check_out_ip, "203.0.113.43")
+
+    def test_admin_scheduling_view_with_individual_employee_filter(self):
+        from datetime import timedelta
+        from django.urls import reverse
+        from django.utils import timezone
+        from apps.scheduling.models import StaffShift
+        from tests.factories import make_admin, make_teacher
+
+        admin_user = make_admin()
+        emp1 = self.employee
+        emp2 = make_teacher(email="other_emp@example.com")
+        now = timezone.now()
+
+        StaffShift.objects.create(
+            employee=emp1,
+            checked_in_at=now - timedelta(hours=1),
+            checked_out_at=now,
+            check_in_ip="10.0.0.1",
+        )
+        StaffShift.objects.create(
+            employee=emp2,
+            checked_in_at=now - timedelta(hours=3),
+            checked_out_at=now,
+            check_in_ip="10.0.0.2",
+        )
+
+        self.client.force_login(admin_user)
+
+        # Filter by emp1
+        res = self.client.get(reverse("admin_panel:schedule_attendance") + f"?employee={emp1.id}")
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Viewing Individual Hours")
+        self.assertContains(res, "10.0.0.1")
+        self.assertNotContains(res, "10.0.0.2")
+
+    def test_scheduling_and_attendance_tab_separation(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from django.urls import reverse
+        from tests.factories import make_admin, make_course, make_student
+        from apps.scheduling.models import Session, SessionBooking, SessionType
+
+        admin_user = make_admin()
+        student = make_student(email="tab_student@example.com")
+        course = make_course(title="Scheduling Test Course")
+
+        session = Session.objects.create(
+            title="Separated Class Session",
+            course=course,
+            instructor=admin_user,
+            session_type=SessionType.LIVE_ONLINE,
+            starts_at=timezone.now() + timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=1, hours=1),
+        )
+        booking = SessionBooking.objects.create(
+            session=session,
+            member=student,
+        )
+
+        self.client.force_login(admin_user)
+
+        # Tab: Schedule
+        res_schedule = self.client.get(reverse("admin_panel:schedule_attendance") + "?tab=schedule")
+        self.assertEqual(res_schedule.status_code, 200)
+        self.assertContains(res_schedule, "Class & Session Schedule")
+        self.assertContains(res_schedule, "Separated Class Session")
+        self.assertNotContains(res_schedule, "All Booking Statuses")
+
+        # Tab: Attendance
+        res_attendance = self.client.get(reverse("admin_panel:schedule_attendance") + "?tab=attendance")
+        self.assertEqual(res_attendance.status_code, 200)
+        self.assertContains(res_attendance, "Member Attendance & Bookings")
+        self.assertContains(res_attendance, "tab_student@example.com")
+        self.assertNotContains(res_attendance, "Upcoming Sessions")
+
+    def test_announcement_crud_and_student_visibility(self):
+        from django.urls import reverse
+        from tests.factories import make_admin, make_teacher, make_student, make_course
+        from apps.notifications.models import Announcement, AnnouncementPriority
+        from apps.enrollments.models import Enrollment
+
+        admin_user = make_admin()
+        teacher = make_teacher(email="ann_teacher@example.com")
+        student = make_student(email="ann_student@example.com")
+        course = make_course(title="React Masterclass", teacher=teacher)
+        Enrollment.objects.create(user=student, course=course, status="active")
+
+        # 1. Admin creates platform-wide announcement
+        self.client.force_login(admin_user)
+        res_create = self.client.post(reverse("admin_panel:announcement_create"), {
+            "title": "Welcome to New Semester",
+            "content": "All courses have been updated with 2026 modules.",
+            "priority": AnnouncementPriority.IMPORTANT,
+            "is_published": "on",
+            "is_pinned": "on",
+        })
+        self.assertEqual(res_create.status_code, 302)
+        self.assertTrue(Announcement.objects.filter(title="Welcome to New Semester").exists())
+
+        # 2. Teacher creates course-specific announcement
+        self.client.force_login(teacher)
+        res_teacher_create = self.client.post(reverse("teacher:announcement_create"), {
+            "title": "React Class Tomorrow",
+            "content": "Please review lecture 4 beforehand.",
+            "course": str(course.id),
+            "priority": AnnouncementPriority.URGENT,
+            "is_published": "on",
+        })
+        self.assertEqual(res_teacher_create.status_code, 302)
+        self.assertTrue(Announcement.objects.filter(title="React Class Tomorrow", course=course).exists())
+
+        # 3. Student can view announcements on public list & detail
+        self.client.force_login(student)
+        res_list = self.client.get(reverse("notifications:announcement_list"))
+        self.assertEqual(res_list.status_code, 200)
+        self.assertContains(res_list, "Welcome to New Semester")
+        self.assertContains(res_list, "React Class Tomorrow")
+
+        ann = Announcement.objects.get(title="Welcome to New Semester")
+        res_detail = self.client.get(reverse("notifications:announcement_detail", kwargs={"announcement_id": ann.id}))
+        self.assertEqual(res_detail.status_code, 200)
+        self.assertContains(res_detail, "All courses have been updated with 2026 modules.")
+
+        # 4. Student dashboard shows announcement banner
+        res_dash = self.client.get(reverse("accounts:student_dashboard"))
+        self.assertEqual(res_dash.status_code, 200)
+        self.assertContains(res_dash, "Welcome to New Semester")
+

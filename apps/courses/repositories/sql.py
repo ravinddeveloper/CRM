@@ -29,6 +29,35 @@ class SQLCourseCatalogRepository:
         return self._category_record(category) if category else None
 
     @staticmethod
+    def _lecture_record(lecture):
+        """Serialize a Lecture ORM object to a plain dict for the catalog."""
+        return {
+            "id": str(lecture.pk),
+            "title": lecture.title,
+            "order": lecture.order,
+            "estimated_duration": lecture.estimated_duration,
+            "duration_seconds": lecture.estimated_duration,
+            "is_free_preview": lecture.is_free_preview,
+            "is_published": lecture.is_published,
+        }
+
+    @staticmethod
+    def _section_record(section):
+        """Serialize a Section ORM object (with prefetched lectures) to a plain dict."""
+        lectures = [
+            SQLCourseCatalogRepository._lecture_record(lec)
+            for lec in section.lectures.all()
+        ]
+        return {
+            "id": str(section.pk),
+            "title": section.title,
+            "order": section.order,
+            "is_published": section.is_published,
+            "lecture_count": len(lectures),
+            "lectures": lectures,
+        }
+
+    @staticmethod
     def _record(course):
         category = course.category
         effective_price = 0 if course.is_free else (
@@ -98,8 +127,10 @@ class SQLCourseCatalogRepository:
 
     def get_by_id(self, course_id):
         try:
-            course = Course.objects.select_related("category", "teacher", "teacher__profile").prefetch_related(
-                "tags", "sections__lectures"
+            course = Course.objects.select_related(
+                "category", "teacher", "teacher__profile"
+            ).prefetch_related(
+                "tags", "sections", "sections__lectures"
             ).filter(pk=course_id).first()
             if course is None:
                 return None
@@ -108,6 +139,12 @@ class SQLCourseCatalogRepository:
                 teacher_bio = course.teacher.profile.bio
             except ObjectDoesNotExist:
                 teacher_bio = ""
+            # Serialize sections + lectures eagerly to plain dicts so the
+            # template never receives ORM objects or RelatedManagers.
+            sections = [
+                self._section_record(section)
+                for section in course.sections.all().order_by("order")
+            ]
             record.update({
                 "teacher_id": str(course.teacher_id),
                 "teacher": {
@@ -118,25 +155,15 @@ class SQLCourseCatalogRepository:
                 },
                 "is_published": course.is_published,
                 "discount_percentage": course.discount_percentage,
-                "total_lectures_count": course.total_lectures_count,
+                "total_lectures_count": sum(s["lecture_count"] for s in sections),
                 "description": course.description,
                 "preview_video_key": course.preview_video_key,
                 "language": course.language,
-                "learning_objectives": course.learning_objectives,
-                "requirements": course.requirements,
+                "learning_objectives": list(course.learning_objectives) if course.learning_objectives else [],
+                "requirements": list(course.requirements) if course.requirements else [],
                 "updated_at": course.updated_at,
                 "tags": [{"id": str(tag.pk), "name": tag.name, "slug": tag.slug} for tag in course.tags.all()],
-                "sections": [{
-                    "id": str(section.pk), "title": section.title, "order": section.order,
-                    "is_published": section.is_published,
-                    "lecture_count": section.lectures.count(),
-                    "lectures": [{
-                        "id": str(lecture.pk), "title": lecture.title, "order": lecture.order,
-                        "estimated_duration": lecture.estimated_duration,
-                        "duration_seconds": lecture.estimated_duration,
-                        "is_free_preview": lecture.is_free_preview, "is_published": lecture.is_published,
-                    } for lecture in section.lectures.all()],
-                } for section in course.sections.all()],
+                "sections": sections,
             })
             return record
         except DatabaseError as exc:

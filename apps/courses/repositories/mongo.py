@@ -53,6 +53,24 @@ class MongoCourseCatalogRepository:
         effective_price = 0 if course.is_free else (
             course.discount_price if course.discount_price is not None else course.price
         )
+        sections = []
+        for section in course.sections.all().order_by("order"):
+            lectures = [
+                {
+                    "id": str(lec.pk), "title": lec.title, "order": lec.order,
+                    "estimated_duration": lec.estimated_duration,
+                    "duration_seconds": lec.estimated_duration,
+                    "is_free_preview": lec.is_free_preview,
+                    "is_published": lec.is_published,
+                }
+                for lec in section.lectures.all().order_by("order")
+            ]
+            sections.append({
+                "id": str(section.pk), "title": section.title, "order": section.order,
+                "is_published": section.is_published,
+                "lecture_count": len(lectures),
+                "lectures": lectures,
+            })
         return {
             "public_id": str(course.pk), "id": str(course.pk), "title": course.title,
             "slug": course.slug, "short_description": course.short_description,
@@ -79,21 +97,13 @@ class MongoCourseCatalogRepository:
             "difficulty": course.difficulty, "estimated_duration": course.estimated_duration,
             "enrollment_count": course.enrollment_count, "average_rating": Decimal128(str(course.average_rating)),
             "description": course.description, "preview_video_key": course.preview_video_key,
-            "language": course.language, "learning_objectives": course.learning_objectives,
-            "requirements": course.requirements, "updated_at": course.updated_at,
-            "total_lectures_count": course.total_lectures_count,
+            "language": course.language,
+            "learning_objectives": list(course.learning_objectives) if course.learning_objectives else [],
+            "requirements": list(course.requirements) if course.requirements else [],
+            "updated_at": course.updated_at,
+            "total_lectures_count": sum(s["lecture_count"] for s in sections),
             "tags": [{"id": str(tag.pk), "name": tag.name, "slug": tag.slug} for tag in course.tags.all()],
-            "sections": [{
-                "id": str(section.pk), "title": section.title, "order": section.order,
-                "is_published": section.is_published,
-                "lecture_count": section.lectures.count(),
-                "lectures": [{
-                    "id": str(lecture.pk), "title": lecture.title, "order": lecture.order,
-                    "estimated_duration": lecture.estimated_duration,
-                    "duration_seconds": lecture.estimated_duration,
-                    "is_free_preview": lecture.is_free_preview, "is_published": lecture.is_published,
-                } for lecture in section.lectures.all()],
-            } for section in course.sections.all()],
+            "sections": sections,
             "created_at": course.created_at, "deleted": False,
         }
 

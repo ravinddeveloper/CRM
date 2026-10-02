@@ -6,6 +6,7 @@ from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
 
 from apps.courses.sitemaps import CourseSitemap
+from apps.storage.views import gdrive_media_view
 
 sitemaps = {
     "courses": CourseSitemap,
@@ -37,8 +38,9 @@ urlpatterns = [
     path("orders/", include("apps.orders.urls", namespace="orders")),
     path("payments/", include("apps.payments.urls", namespace="payments")),
 
-    # Notifications
+    # Notifications & Announcements
     path("notifications/", include("apps.notifications.urls", namespace="notifications")),
+    path("announcements/", include("apps.notifications.urls", namespace="announcements")),
 
     # Certificates
     path("certificates/", include("apps.certificates.urls", namespace="certificates")),
@@ -55,6 +57,9 @@ urlpatterns = [
 
     # Private object storage serving for development
     path("private-media/", include("apps.storage.urls")),
+
+    # Google Drive media proxy (signed URLs issued by GoogleDriveStorageService)
+    path("gdrive-media/", gdrive_media_view, name="gdrive_media"),
 ]
 
 # Error handlers

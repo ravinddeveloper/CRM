@@ -94,18 +94,28 @@ def course_list_view(request):
     )
     featured_courses = _catalog_cards(featured_courses)
 
+    from apps.notifications.models import Announcement
+    latest_announcements = Announcement.objects.filter(
+        is_published=True, course__isnull=True
+    ).order_by("-is_pinned", "-created_at")[:4]
+
+    total_count = paginator.count
+    if total_count == 0 and courses:
+        total_count = len(courses)
+
     context = {
         "page_obj": page_obj,
         "courses": page_obj.object_list,
         "categories": categories,
         "featured_courses": featured_courses,
+        "latest_announcements": latest_announcements,
         "q": q,
         "selected_category": category_slug,
         "selected_difficulty": difficulty,
         "price_min": price_min,
         "price_max": price_max,
         "sort": sort,
-        "total_count": paginator.count,
+        "total_count": total_count,
         "title": f"Courses{' — ' + q if q else ''}",
         "meta_description": "Browse our collection of expert-led online courses.",
     }
@@ -160,10 +170,38 @@ def course_detail_view(request, slug):
                 course_progress = getattr(enrollment, "progress", None)
 
     sections = course.get("sections", [])
+    # Defensive guard: if the repository ever returns ORM Section objects instead
+    # of plain dicts (e.g. from a legacy code path or a direct queryset), serialize
+    # them now so the template always receives plain Python dicts with a "lectures" list.
+    _normalized = []
+    for sec in sections:
+        if isinstance(sec, dict):
+            _normalized.append(sec)
+        else:
+            # ORM Section object — serialize defensively
+            lectures = [
+                {
+                    "id": str(lec.pk), "title": lec.title, "order": lec.order,
+                    "estimated_duration": lec.estimated_duration,
+                    "duration_seconds": lec.estimated_duration,
+                    "is_free_preview": getattr(lec, "is_free_preview", False),
+                    "is_published": lec.is_published,
+                }
+                for lec in sec.lectures.all().order_by("order")
+            ]
+            _normalized.append({
+                "id": str(sec.pk), "title": sec.title, "order": sec.order,
+                "is_published": sec.is_published,
+                "lecture_count": len(lectures),
+                "lectures": lectures,
+            })
+    sections = _normalized
+
     if not (is_course_mentor or is_admin):
-        sections = [section for section in sections if section.get("is_published", True)]
+        sections = [s for s in sections if s.get("is_published", True)]
     for section in sections:
         section["lecture_count"] = len(section.get("lectures", []))
+
 
     context = {
         "course": course,

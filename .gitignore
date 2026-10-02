@@ -22,5 +22,6 @@ db.sqlite3
 
 # Static & Media
 staticfiles/
+graphify-out
 media/
 

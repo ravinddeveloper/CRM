@@ -62,3 +62,42 @@ class NotificationSyncEvent(models.Model):
     class Meta:
         ordering = ["created_at", "id"]
         indexes = [models.Index(fields=["processed_at", "created_at"])]
+
+
+class AnnouncementPriority(models.TextChoices):
+    NORMAL = "normal", "Normal"
+    IMPORTANT = "important", "Important"
+    URGENT = "urgent", "Urgent"
+
+
+class Announcement(BaseModel):
+    """Platform-wide or course-specific announcements made by admins or teachers."""
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_announcements")
+    course = models.ForeignKey(
+        "courses.Course",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="announcements",
+        help_text="Leave blank for platform-wide announcements; set course for course students only."
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=AnnouncementPriority.choices,
+        default=AnnouncementPriority.NORMAL,
+    )
+    is_pinned = models.BooleanField(default=False)
+    is_published = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-is_pinned", "-created_at"]
+        indexes = [
+            models.Index(fields=["is_published", "is_pinned", "-created_at"]),
+            models.Index(fields=["course", "is_published"]),
+        ]
+
+    def __str__(self):
+        scope = f"[{self.course.title}]" if self.course else "[Platform]"
+        return f"{scope} {self.title} by {self.author}"

@@ -1,6 +1,7 @@
 """Admin panel URLs for accounts, courses, transactions, coupons, and enrollments."""
 from django.urls import path
 
+from apps.notifications import views as notifications_views
 from apps.scheduling import admin_views as scheduling_admin_views
 
 from . import admin_views
@@ -10,6 +11,12 @@ app_name = "admin_panel"
 urlpatterns = [
     # Overview
     path("", admin_views.dashboard_view, name="dashboard"),
+
+    # Announcements Management
+    path("announcements/", notifications_views.admin_announcement_list, name="announcement_list"),
+    path("announcements/create/", notifications_views.admin_announcement_create, name="announcement_create"),
+    path("announcements/<uuid:announcement_id>/edit/", notifications_views.admin_announcement_edit, name="announcement_edit"),
+    path("announcements/<uuid:announcement_id>/delete/", notifications_views.admin_announcement_delete, name="announcement_delete"),
 
     # Business sessions, bookings, and attendance
     path("schedule/", scheduling_admin_views.schedule_attendance_view, name="schedule_attendance"),
